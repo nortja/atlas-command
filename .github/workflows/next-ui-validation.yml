@@ -4,7 +4,7 @@ name: Test next workspace and LiDAR build
 on:
   push:
     branches: ['develop/next-workspaces']
-    paths: ['.github/workflows/next-ui-validation.yml', 'build/integrate_next.py', 'tests/next_ui_test.py', 'app/src/workspace-layout.js', 'app/src/lidar.js', 'app/src/next-ui.css', 'tests/lidar.test.cjs', 'tests/workspace-layout.test.cjs']
+    paths: ['.github/workflows/next-ui-validation.yml', 'build/integrate_next.py', 'build/finish_next.py', 'tests/next_ui_test.py', 'app/src/workspace-layout.js', 'app/src/lidar.js', 'app/src/next-ui.css', 'tests/lidar.test.cjs', 'tests/workspace-layout.test.cjs']
 permissions:
   contents: write
 concurrency:
@@ -24,6 +24,8 @@ jobs:
         run: |
           python build/integrate_next.py
           if ($LASTEXITCODE -ne 0) { throw 'Source baseline mismatch or integration failed.' }
+          python build/finish_next.py
+          if ($LASTEXITCODE -ne 0) { throw 'Follow-up source integration failed.' }
           node --test tests/core.test.cjs tests/source-checks.test.cjs tests/store-identity.test.cjs tests/workspace-layout.test.cjs tests/lidar.test.cjs
           if ($LASTEXITCODE -ne 0) { throw 'Code checks failed.' }
           python -m py_compile tests/next_ui_test.py
@@ -42,7 +44,15 @@ jobs:
           [IO.File]::WriteAllText($vs, 'using System.Reflection; [assembly: AssemblyVersion("1.1.0.0")] [assembly: AssemblyFileVersion("1.1.0.0")]', [Text.UTF8Encoding]::new($false))
           $exe = Join-Path $stage 'AtlasCommand.exe'
           $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-          & $compiler /nologo /codepage:65001 /target:winexe /platform:x64 /optimize+ /warn:4 /warnaserror+ "/out:$exe" /win32manifest:native/WindowsApp.manifest /win32icon:native/AtlasCommand.ico /reference:System.dll,System.Core.dll,System.Web.Extensions.dll,System.Windows.Forms.dll native/AtlasHost.cs native/AssemblyInfo.cs $vs
+          $arguments = @(
+            '/nologo', '/codepage:65001', '/target:winexe', '/platform:x64', '/optimize+', '/warn:4', '/warnaserror+',
+            ('/out:' + $exe),
+            ('/win32manifest:' + (Join-Path $PWD 'native/WindowsApp.manifest')),
+            ('/win32icon:' + (Join-Path $PWD 'native/AtlasCommand.ico')),
+            '/reference:System.dll,System.Core.dll,System.Web.Extensions.dll,System.Windows.Forms.dll',
+            (Join-Path $PWD 'native/AtlasHost.cs'), (Join-Path $PWD 'native/AssemblyInfo.cs'), $vs
+          )
+          & $compiler @arguments
           if ($LASTEXITCODE -ne 0) { throw 'Native compilation failed.' }
           ('ATLAS_SMOKE_EXE=' + $exe) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           ('ATLAS_SMOKE_STAGE=' + $stage) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
@@ -60,7 +70,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:GITHUB_REF -cne 'refs/heads/develop/next-workspaces') { throw 'Wrong source branch.' }
-          $paths = @('app/index.html','app/workspace-preview.html','app/src/app.js','native/AtlasHost.cs','build/Build-Store.ps1','packaging/store-config.json')
+          $paths = @('app/index.html','app/workspace-preview.html','app/src/app.js','native/AtlasHost.cs','build/Build-Store.ps1','packaging/store-config.json','tests/next_ui_test.py')
           & git add -- @paths
           if ($LASTEXITCODE -ne 0) { throw 'Staging failed.' }
           $unexpected = @(git diff --cached --name-only | Where-Object { $_ -notin $paths })
