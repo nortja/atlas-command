@@ -1,10 +1,9 @@
-# Owner-authorized Live Earth development only. Preserve existing $0 spending block.
-# No installer, signing, Store submission, publication, or employer-device actions.
+# Owner-authorized development only. Preserve existing $0 spending block and main.
 name: Test Live Earth weather integration
 on:
   push:
     branches: ['develop/next-workspaces']
-    paths: ['.github/workflows/live-weather-validation.yml', 'build/integrate_live_weather.py', 'app/src/live-weather.js', 'app/src/live-weather.css', 'tests/live-weather.test.cjs', 'tests/live_weather_ui.py']
+    paths: ['.github/workflows/live-weather-validation.yml', 'build/integrate_live_weather.py', 'build/finish_live_weather.py', 'app/src/live-weather.js', 'app/src/live-weather.css', 'tests/live-weather.test.cjs', 'tests/live_weather_ui.py']
 permissions:
   contents: write
 concurrency:
@@ -25,6 +24,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           python build/integrate_live_weather.py
           if ($LASTEXITCODE -ne 0) { throw 'Source integration failed.' }
+          python build/finish_live_weather.py
+          if ($LASTEXITCODE -ne 0) { throw 'Follow-up integration failed.' }
           node --check app/src/live-weather.js
           if ($LASTEXITCODE -ne 0) { throw 'Weather syntax failed.' }
           node --check app/src/app.js
@@ -59,7 +60,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Workspace regression test failed.' }
           python tests/weather_units_ui.py
           if ($LASTEXITCODE -ne 0) { throw 'Unit control regression test failed.' }
-      - name: Verify real weather provider, global grid, offline fallback and screenshots
+      - name: Verify real weather, idle behavior, offline fallback and screenshots
         shell: pwsh
         run: |
           python tests/live_weather_ui.py
@@ -71,14 +72,14 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:GITHUB_REF -cne 'refs/heads/develop/next-workspaces') { throw 'Wrong branch.' }
-          $paths = @('app/index.html','app/workspace-preview.html','app/src/app.js','app/src/globe.js','native/AtlasHost.cs','build/Build-Store.ps1')
+          $paths = @('app/index.html','app/workspace-preview.html','app/src/app.js','app/src/globe.js','app/src/core.js','app/src/live-weather.js','native/AtlasHost.cs','build/Build-Store.ps1','tests/core.test.cjs','tests/live_weather_ui.py')
           & git add -- @paths
           if ($LASTEXITCODE -ne 0) { throw 'Staging failed.' }
           $unexpected = @(git diff --cached --name-only | Where-Object { $_ -notin $paths })
           if ($unexpected.Count) { throw 'Unexpected staged path.' }
           & git diff --cached --quiet
           if ($LASTEXITCODE -eq 1) {
-            git -c user.name='Atlas development automation' -c user.email='atlas-dev@users.noreply.github.com' commit -m 'Integrate tested opt-in Live Earth weather and present-day sky rendering in development'
+            git -c user.name='Atlas development automation' -c user.email='atlas-dev@users.noreply.github.com' commit -m 'Integrate tested Live Earth weather and preserve research timestamps on reload'
             if ($LASTEXITCODE -ne 0) { throw 'Commit failed.' }
             $encoded = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('x-access-token:' + $env:GH_TOKEN))
             Write-Output ('::add-mask::' + $encoded)
@@ -105,3 +106,4 @@ jobs:
         shell: pwsh
         run: |
           if ($env:ATLAS_SMOKE_STAGE -and (Test-Path -LiteralPath $env:ATLAS_SMOKE_STAGE)) { Remove-Item -LiteralPath $env:ATLAS_SMOKE_STAGE -Recurse -Force }
+# No installer artifact, signing, Store upload, publication, or employer-device changes.
