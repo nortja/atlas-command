@@ -22,3 +22,4 @@ jobs:
           path: ui-source.zip
           retention-days: 1
 # No Store publication, installation, billing, security or main-branch changes.
+# Refresh source review for owner-requested manual IP camera metadata implementation.
