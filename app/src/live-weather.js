@@ -74,7 +74,7 @@ function mount(win){
  const sheet=doc.createElement('dialog');sheet.id='liveEarthSettings';sheet.className='next-dialog';sheet.setAttribute('aria-labelledby','earthTitle');doc.body.append(sheet);
  function currentSite(){const s=app.liveEarth.selection();return s?{id:s.id,name:s.name,...coordinates(s.lat,s.lon)}:null;}
  function historical(){return app.liveEarth.context().historical;}
- function updateRibbon(){const now=Date.now(),gs=cache.grid,st=gs?freshness({time:gs.time,fetchedAt:gs.fetchedAt},now,true):'missing';ribbon.textContent=historical()?'HISTORICAL VIEW · today’s atmosphere hidden':!cfg.enabled?'LIVE EARTH OFF · calculated day / night':gridBusy?'UPDATING GLOBAL MODEL · quiet atmosphere':gs?'CLOUD / PRECIPITATION · 15° MODEL SAMPLES · '+(st==='current'?'as of '+time(gs.time,'UTC')+' UTC':st.toUpperCase()):'GLOBAL MODEL '+(gridError?'UNAVAILABLE':'NOT LOADED');}
+ function updateRibbon(){const now=Date.now(),gs=cache.grid,st=gs?freshness({time:gs.time,fetchedAt:gs.fetchedAt},now,true):'missing';ribbon.textContent=historical()?'HISTORICAL VIEW · today’s atmosphere hidden':!cfg.enabled?'LIVE EARTH OFF · calculated day / night':!cfg.global?'GLOBAL WEATHER OFF · selected-area weather enabled':gridBusy?'UPDATING GLOBAL MODEL · quiet atmosphere':gs?'CLOUD / PRECIPITATION · 15° MODEL SAMPLES · '+(st==='current'?'as of '+time(gs.time,'UTC')+' UTC':st.toUpperCase()):'GLOBAL MODEL '+(gridError?'UNAVAILABLE':'NOT LOADED');}
  function card(){
   if(!chosen)return;const body=$('#dossierBody');if(!body)return;let node=$('#weatherCard');if(!node){node=doc.createElement('section');node.id='weatherCard';node.setAttribute('aria-label','Today’s weather for selected area');const title=body.querySelector('.coords');if(title)title.after(node);else body.prepend(node);}
   const age=freshness(sample),show=!!sample,u=win.AtlasWeatherUnits.quickGlance(sample,app.weather.getUnits()),h=nextHours(sample),moon=win.AtlasCore.moonPhase(),todayDate=new Intl.DateTimeFormat('en-US',{timeZone:sample?.timezone||'UTC',month:'short',day:'numeric'}).format(new Date());
@@ -96,7 +96,7 @@ function mount(win){
   if(!cfg.enabled||!chosen||doc.hidden)return;
   const now=Date.now(),p={...chosen},k=key(p),saved=cache.points[k];
   sample=saved||null;if(saved&&!force&&now-saved.fetchedAt<POINT_TTL){card();return;}
-  if(now-lastPointAttempt<2500){card();return;}lastPointAttempt=now;pointRequests=pointRequests.filter(t=>now-t<3600000);if(pointRequests.length>=60){pointError='Hourly refresh limit reached. Cached weather remains available.';card();return;}pointRequests.push(now);
+  if(now-lastPointAttempt<2500){win.clearTimeout(selectionTimer);selectionTimer=win.setTimeout(()=>loadPoint(force),2500-(now-lastPointAttempt)+25);card();return;}lastPointAttempt=now;pointRequests=pointRequests.filter(t=>now-t<3600000);if(pointRequests.length>=60){pointError='Hourly refresh limit reached. Cached weather remains available.';card();return;}pointRequests.push(now);
   pointAbort?.abort();const abort=new AbortController();pointAbort=abort;pointBusy=true;pointError='';card();
   const timeout=win.setTimeout(()=>abort.abort(),15000);
   try{const raw=await fetchJSON(url([p]),abort.signal);const s=normalize(raw,p);if(!cfg.enabled||!chosen||key(chosen)!==k||abort.signal.aborted)return;
@@ -123,7 +123,7 @@ function mount(win){
   $('#earthClose').onclick=()=>sheet.close();$('#earthApply').onclick=async()=>{if(controlsBusy)return;const previous=cfg;cfg={enabled:$('#earthEnabled').checked,global:$('#earthGlobal').checked,cinematic:$('#earthCinema').checked,autoIdle:$('#earthIdle').checked};controlsBusy=true;$('#earthApply').disabled=true;
    if(!cfg.enabled){pointAbort?.abort();gridAbort?.abort();wake();}else if(!cfg.global)gridAbort?.abort();
    try{await persist();$('#earthSaveStatus').textContent='Saved locally.';sheet.close();if(cfg.enabled){loadPoint();loadGlobal();}card();updateRibbon();}catch{cfg=previous;$('#earthSaveStatus').textContent='Could not save settings. Previous choice retained.';}finally{controlsBusy=false;if($('#earthApply'))$('#earthApply').disabled=false;}};
-  $('#earthClear').onclick=async()=>{if(controlsBusy)return;pointAbort?.abort();gridAbort?.abort();const before=cache;cache={points:{},grid:null};sample=null;try{await persist();$('#earthSaveStatus').textContent='Weather cache cleared. Saved research is unchanged.';card();updateRibbon();}catch{cache=before;sample=chosen?cache.points[key(chosen)]||null:null;$('#earthSaveStatus').textContent='Cache could not be cleared.';}};
+  $('#earthClear').onclick=async()=>{if(controlsBusy)return;pointAbort?.abort();gridAbort?.abort();const before=cache;cache={points:{},grid:null};sample=null;try{await persist();$('#earthSaveStatus').textContent='Weather cache cleared. Saved research is unchanged. Earlier backups and exports are not deleted.';card();updateRibbon();}catch{cache=before;sample=chosen?cache.points[key(chosen)]||null:null;$('#earthSaveStatus').textContent='Cache could not be cleared.';}};
   if(open&&!sheet.open)sheet.showModal();
  }
  trigger.onclick=()=>settings();

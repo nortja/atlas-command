@@ -8,10 +8,10 @@ const MODULES=[
  {id:'archaeology',name:'Ancient atlas',status:'Local',detail:'Sites, chronology, mystery ratings, evidence and field notes.'},
  {id:'lidar',name:'LiDAR intelligence',status:'Local records',detail:'Separate all-era catalog. Survey leads are not unvisited-site claims. LAS/LAZ point-cloud rendering is not included.'},
  {id:'magnetic',name:'Magnetic research',status:'Workbench',detail:'Manual, sourced axis-versus-declination comparison. No field model or prediction engine is connected.'},
- {id:'sky',name:'Celestial context',status:'Limited',detail:'Approximate present-day lunar phase. Historical stars, eclipses and precise ephemerides require a validated engine.'},
+ {id:'sky',name:'Celestial context',status:'Limited',detail:'Approximate present-day solar day/night and lunar phase, plus provider-calculated sunrise/sunset. Historical stars, eclipses and precise ephemerides are not connected.'},
  {id:'minerals',name:'Minerals & fossils',status:'Local records',detail:'Record locations and local evidence. Collecting access and commercial rights must be checked separately.'},
  {id:'expedition',name:'Expedition planner',status:'Manual',detail:'Mission queue, budgets and readiness checklist. No live fares, bookings or current advisories are included.'},
- {id:'weather',name:'Live Earth & updates',status:'Not connected',detail:'Provider contracts, source timestamps and safe sync are future work. The atmosphere is a visual effect, not a weather feed.'}
+ {id:'weather',name:'Live Earth & updates',status:'Opt-in feed',detail:'Open-Meteo model weather, selected-area card and cached global samples after consent. Personal non-commercial use. No satellite imagery, measured lightning or official alerts.'}
 ];
 function finiteNumber(x){return x!==null && x!==undefined && String(x).trim()!=='' && Number.isFinite(Number(x));}
 function yearLabel(y){if(!finiteNumber(y))return 'Date unresolved'; y=Number(y);return y<0?Math.abs(y).toLocaleString('en-US')+' BCE':y===0?'No year zero':y.toLocaleString('en-US')+' CE';}
@@ -52,7 +52,7 @@ function normalizeSite(raw, origin='user'){
  review:clean(raw.review||'Imported record; chronology, coordinates and rating need review'),
  media:Array.isArray(raw.media)?raw.media.filter(m=>m&&typeof m.key==='string'&&/^[\w.-]+$/.test(m.key)).slice(0,100).map(m=>({key:m.key,name:clean(m.name),type:clean(m.type)})):[],
  research:raw.research&&typeof raw.research==='object'?raw.research:{},
- createdAt:clean(raw.createdAt||new Date().toISOString()),updatedAt:new Date().toISOString(),
+ createdAt:clean(raw.createdAt||new Date().toISOString()),updatedAt:typeof raw.updatedAt==='string'&&raw.updatedAt.length<=64&&Number.isFinite(Date.parse(raw.updatedAt))?raw.updatedAt:new Date().toISOString(),
  legacy:raw.legacy&&typeof raw.legacy==='object'?raw.legacy:{age,evidence_tier:raw.evidence_tier||'',index:raw.index??null,photo_url:raw.photo_url||''}
  };
 }

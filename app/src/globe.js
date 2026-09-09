@@ -52,6 +52,7 @@ class Globe{
   for(const line of this.coasts)this.line(line,'#72c5d6a0',.72);
   for(const v of this.dots){const p=this.project(v);if(p.z<0)continue;ctx.fillStyle=p.z>.65?'#74bac79a':p.z>.3?'#559caf80':'#356c8060';ctx.beginPath();ctx.arc(p.x,p.y,.65+Math.max(0,p.z)*.35,0,TAU);ctx.fill();}
   if(this.options.atmosphere){ctx.save();ctx.beginPath();ctx.arc(this.cx,this.cy,R,0,TAU);ctx.clip();for(let n=0;n<5;n++){ctx.strokeStyle='#c0e7ed0a';ctx.lineWidth=R*.04;ctx.beginPath();for(let k=0;k<100;k++){const x=this.cx-R+k*R/50,y=this.cy+R*(n*.3-.65)+Math.sin(k*.06+n+(this.reduced?0:t*.00003))*R*.15;if(k===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}ctx.restore();}
+  if(this.environmentRenderer){this.ctx.save();try{this.environmentRenderer(this,t);}finally{this.ctx.restore();}}
   ctx.strokeStyle='#8bdded9a';ctx.lineWidth=1.1;ctx.beginPath();ctx.arc(this.cx,this.cy,R,0,TAU);ctx.stroke();ctx.strokeStyle='#599aad20';ctx.beginPath();ctx.arc(this.cx,this.cy,R*1.022,0,TAU);ctx.stroke();
   if(this.options.concept){ctx.save();ctx.setLineDash([3,6]);ctx.strokeStyle='#e9c57255';for(let n=0;n<4;n++){ctx.beginPath();ctx.ellipse(this.cx,this.cy,R*(.4+n*.25),R*1.3,-.2,0,TAU);ctx.stroke();}ctx.setLineDash([]);ctx.fillStyle='#e9c572';ctx.font='10px "Segoe UI", Arial, sans-serif';ctx.textAlign='center';ctx.fillText('CONCEPT DIAGRAM · NOT A MAGNETIC FIELD MODEL',this.cx,this.cy+R*1.34);ctx.restore();}
   this.hits=[];let front=this.sites.map(s=>({...s,p:this.project(s.v)})).filter(s=>s.p.z>.07).sort((a,b)=>a.p.z-b.p.z);

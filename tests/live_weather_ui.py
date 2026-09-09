@@ -2,7 +2,7 @@
 No personal library data is used. Fault tests explicitly block requests in this test
 context, not the app's CSP or any endpoint security policy. No installer produced.
 """
-import hashlib,json,os,time
+import hashlib,json,os,time,math
 from pathlib import Path
 from urllib.parse import urlparse,parse_qs
 from playwright.sync_api import sync_playwright,expect
@@ -53,11 +53,11 @@ def main():
    assert page.evaluate('JSON.stringify(AtlasWorkspace.sites.list())')==before
    passed('Full model cache saved to native disk without modifying research records')
    page.locator('#workspacePresets').click();page.locator('[data-preset="research"]').click();page.locator('#workspaceChooser').wait_for(state='hidden')
-   page.wait_for_timeout(500);page.screenshot(path=str(OUT/'01-Live-Earth-Observatory.png'))
+   page.locator('#toast').wait_for(state='hidden');page.wait_for_timeout(500);page.screenshot(path=str(OUT/'01-Live-Earth-Observatory.png'))
    page.locator('#weatherCard').screenshot(path=str(OUT/'02-Selected-Area-Weather.png'))
    calls=len(external);page.locator('#wxUnits').click();expect(page.locator('#wxUnits')).to_contain_text('°C')
    assert page.evaluate('AtlasWorkspace.weather.getUnits()')=='metric'
-   assert page.locator('.wx-now>strong').inner_text()==str(round(pt['temperatureC']))+' °C'
+   assert page.locator('.wx-now>strong').inner_text()==str(math.floor(pt['temperatureC']+0.5))+' °C'
    assert len(external)==calls
    passed('Weather-card unit toggle reformats cached values without another provider request')
    for width,height in [(1366,768),(1920,1080),(3440,1440),(820,1180)]:
@@ -66,6 +66,14 @@ def main():
     if width==1366:page.screenshot(path=str(OUT/'03-Laptop-Live-Weather.png'))
    page.set_viewport_size({'width':2560,'height':1440})
    passed('Weather card and controls remain within laptop, desktop, ultrawide and compact page bounds')
+   page.mouse.move(0,0)
+   wait(lambda:page.locator('body').evaluate('(n)=>n.classList.contains("earth-idle")'),100)
+   assert page.evaluate('AtlasWorkspace.isGlobeFocused() && AtlasWorkspace.liveEarth.context().spin')
+   page.screenshot(path=str(OUT/'05-Idle-Living-Globe.png'))
+   page.mouse.move(25,25)
+   wait(lambda:not page.locator('body').evaluate('(n)=>n.classList.contains("earth-idle")'))
+   assert not page.evaluate('AtlasWorkspace.isGlobeFocused()')
+   passed('Real idle timeout enters rotating globe focus and pointer activity restores the prior workspace')
    page.locator('#exactYear').fill('-9000');page.locator('#exactYear').press('Tab');expect(page.locator('#earthStatus')).to_contain_text('HISTORICAL VIEW')
    expect(page.locator('#weatherCard .wx-heading')).to_contain_text('TODAY')
    page.locator('#presentBtn').click();expect(page.locator('#earthStatus')).not_to_contain_text('HISTORICAL VIEW')

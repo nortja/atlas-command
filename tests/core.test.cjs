@@ -25,4 +25,8 @@ test('angle comparison is axial, not a probability',()=>{assert.equal(C.angularD
 test('budget totals are manual nonnegative USD components',()=>assert.equal(C.budgetTotal({transport:100,lodging:'200',guide:25,permits:-10,other:'not set'}),325));
 test('distance helper returns zero for identical positions',()=>assert.equal(C.haversine({lat:0,lon:0},{lat:0,lon:0}),0));
 test('approximate lunar output is bounded and labels its limitation',()=>{const m=C.moonPhase(new Date('2026-09-08T12:00:00Z'));assert.ok(m.phase>=0&&m.phase<1&&m.illumination>=0&&m.illumination<=1);assert.match(m.basis,/not an ephemeris/);});
-test('module registry distinguishes implemented and absent providers',()=>{assert.equal(C.MODULES.find(m=>m.id==='weather').status,'Not connected');assert.match(C.MODULES.find(m=>m.id==='magnetic').detail,/No field model/);});
+test('module registry distinguishes implemented and absent providers',()=>{assert.equal(C.MODULES.find(m=>m.id==='weather').status,'Opt-in feed');assert.match(C.MODULES.find(m=>m.id==='magnetic').detail,/No field model/);});
+
+test('normalization preserves saved edit timestamps across repeated reloads',()=>{const s=C.normalizeSite({...base,createdAt:'2025-06-01T12:00:00.000Z',updatedAt:'2025-06-10T09:30:00.000Z'});assert.equal(s.updatedAt,'2025-06-10T09:30:00.000Z');assert.deepEqual(C.normalizeSite(C.normalizeSite(s)),s);});
+test('malformed edit timestamp cannot persist as a claimed valid date',()=>{for(const updatedAt of [null,{},'not a date','x'.repeat(65)]){const s=C.normalizeSite({...base,updatedAt});assert(Number.isFinite(Date.parse(s.updatedAt)));}});
+test('actual site edits explicitly advance their timestamp',()=>{const text=require('node:fs').readFileSync(require('node:path').join(__dirname,'../app/src/app.js'),'utf8');assert(text.includes('C.normalizeSite({...s,...raw,updatedAt:new Date().toISOString()'));});

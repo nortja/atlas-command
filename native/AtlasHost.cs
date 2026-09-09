@@ -1,5 +1,5 @@
 // Atlas Command -- Store-preparation source. Build on an authorized Windows build runner only.
-// No external dependencies. All app traffic stays on an ephemeral loopback port.
+// The native helper uses loopback IPC. Optional renderer weather requests use a fixed HTTPS provider after consent.
 // Store submission preparation is not security clearance. Do not expose this server to a network.
 using System;
 using System.Collections;
@@ -32,7 +32,7 @@ internal static class AtlasHost
         {".png","image/png"},{".jpg","image/jpeg"},{".jpeg","image/jpeg"},{".webp","image/webp"},
         {".mp4","video/mp4"},{".webm","video/webm"},{".pdf","application/pdf"}
     };
-    const string CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+    const string CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://api.open-meteo.com; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
     [STAThread]
     static void Main()
@@ -70,7 +70,7 @@ internal static class AtlasHost
                 "--app=\"" + url + "\" --user-data-dir=\"" + profile + "\" --no-first-run --no-default-browser-check --window-size=1600,1000");
             start.UseShellExecute = false;
             Process.Start(start);
-            Log("Started local host; Development 1.1. No online feed or updater is installed.");
+            Log("Started local host; development 1.1. Optional renderer weather is user-controlled. No executable updater or scheduled task is installed.");
             while (!Stopping) {
                 if (new TimeSpan(DateTime.UtcNow.Ticks - Interlocked.Read(ref LastHeartbeat)).TotalMinutes > 5) break;
                 if (!Listener.Pending()) { Thread.Sleep(50); continue; }
@@ -204,7 +204,7 @@ internal static class AtlasHost
             if (method != "GET" && !head) { Error(stream,405,"Method not allowed"); return; }
             if (rel == "") rel = "index.html";
             // Serve the renderer only, never source/host files, data-folder backups, or directory listings.
-            bool allowed = rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "src/next-ui.css" || rel == "src/workspace-layout.js" || rel == "src/weather-units.js" || rel == "src/lidar.js" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
+            bool allowed = rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "src/next-ui.css" || rel == "src/workspace-layout.js" || rel == "src/weather-units.js" || rel == "src/live-weather.js" || rel == "src/live-weather.css" || rel == "src/lidar.js" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
             string ext = Path.GetExtension(rel).ToLowerInvariant();
             string type = ext == ".html" ? "text/html; charset=utf-8" : ext == ".js" ? "text/javascript; charset=utf-8" : ext == ".css" ? "text/css; charset=utf-8" : ext == ".svg" ? "image/svg+xml" : "";
             if (!allowed || type == "") { Error(stream,404,"Not found"); return; }
