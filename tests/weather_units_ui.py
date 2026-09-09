@@ -35,6 +35,8 @@ def main():
             passed('New workspace defaults to Fahrenheit and mph in the actual Settings UI')
             page.locator('#weatherUnitsControl').scroll_into_view_if_needed()
             page.screenshot(path=str(out/'Weather-Units-Settings.png'))
+            # Do not assume a debounced initial workspace write has already occurred.
+            us.click();expect(page.locator('[data-weather-unit-status]')).to_have_text('Saved locally: °F + mph')
             before=host.read_state()['sites']
             metric.click();expect(page.locator('[data-weather-unit-status]')).to_have_text('Saved locally: °C + km/h')
             assert host.read_state()['settings']['weatherUnits']=='metric'
