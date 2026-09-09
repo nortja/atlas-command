@@ -1,0 +1,78 @@
+# Manual, disposable-runner check. Keep Actions at $0 with Stop usage enabled.
+# No installation on the owner's PC, signing, security exclusions, or Store upload.
+name: Windows app test
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_test:
+        description: 'Test startup and local saves on a disposable Windows runner; keep the $0 spending block.'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: atlas-windows-runtime
+  cancel-in-progress: false
+jobs:
+  test:
+    if: ${{ inputs.confirm_test && github.event.repository.private }}
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Check out source without retaining credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # Same reviewed commit as the successful compile check
+        with:
+          persist-credentials: false
+      - name: Run logic, source and Store identity checks
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          node --test tests/core.test.cjs tests/source-checks.test.cjs tests/store-identity.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Source checks failed.' }
+          python -m py_compile tests/windows_native_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime test syntax check failed.' }
+      - name: Compile the unchanged native application into runner temporary storage
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $config = Get-Content -LiteralPath 'packaging/store-config.json' -Raw | ConvertFrom-Json
+          if ($config.version -notmatch '^\d+\.\d+\.\d+\.0$') { throw 'Invalid Store version.' }
+          $stage = Join-Path $env:RUNNER_TEMP ('atlas-runtime-' + [guid]::NewGuid().ToString('N'))
+          $null = New-Item -ItemType Directory -Path $stage
+          Copy-Item -Path 'app/*' -Destination $stage -Recurse
+          Copy-Item -LiteralPath 'native/AtlasCommand.exe.config' -Destination $stage
+          $versionSource = Join-Path $stage 'VersionInfo.cs'
+          $versionText = 'using System.Reflection;' + [Environment]::NewLine +
+            '[assembly: AssemblyVersion("' + $config.version + '")]' + [Environment]::NewLine +
+            '[assembly: AssemblyFileVersion("' + $config.version + '")]'
+          [IO.File]::WriteAllText($versionSource, $versionText, [Text.UTF8Encoding]::new($false))
+          $exe = Join-Path $stage 'AtlasCommand.exe'
+          $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          $arguments = @(
+            '/nologo', '/codepage:65001', '/target:winexe', '/platform:x64', '/optimize+', '/warn:4', '/warnaserror+',
+            ('/out:' + $exe),
+            ('/win32manifest:' + (Join-Path $PWD 'native/WindowsApp.manifest')),
+            ('/win32icon:' + (Join-Path $PWD 'native/AtlasCommand.ico')),
+            '/reference:System.dll,System.Core.dll,System.Web.Extensions.dll,System.Windows.Forms.dll',
+            (Join-Path $PWD 'native/AtlasHost.cs'), (Join-Path $PWD 'native/AssemblyInfo.cs'), $versionSource
+          )
+          & $compiler @arguments
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $exe)) { throw 'Native compilation failed.' }
+          if ([Reflection.AssemblyName]::GetAssemblyName($exe).Version.ToString() -ne $config.version) { throw 'Version mismatch.' }
+          ('ATLAS_SMOKE_EXE=' + $exe) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          ('ATLAS_SMOKE_STAGE=' + $stage) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Test actual startup, native-rendered page, saves, attachments and restart
+        shell: pwsh
+        run: |
+          python tests/windows_native_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'Windows native smoke test failed. Review the step log and summary.' }
+      - name: Remove temporary executable and test payload
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:ATLAS_SMOKE_STAGE -and (Test-Path -LiteralPath $env:ATLAS_SMOKE_STAGE)) {
+            Remove-Item -LiteralPath $env:ATLAS_SMOKE_STAGE -Recurse -Force
+          }
+# No recurring triggers, uploaded artifacts, dependency installation, release, or billing changes.
