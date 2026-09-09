@@ -1,0 +1,76 @@
+# Manual engineering package only. Keep the account's $0 Actions spending block.
+# No installation, certificates, endpoint exclusions, billing changes or Store submission.
+name: Build Windows package
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_package:
+        description: 'Create an unsigned engineering package only; keep the $0 Actions spending block.'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: atlas-engineering-package
+  cancel-in-progress: false
+jobs:
+  package:
+    if: ${{ inputs.confirm_package && github.event.repository.private && github.repository == 'nortja/atlas-command' }}
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Check out source without retaining credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Require the actual successful native test and unchanged runtime source
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tested = 'c1c1264667650c41e534ec8d6fb1e722871d39a9'
+          $headers = @{ Authorization = ('Bearer ' + $env:GH_TOKEN); Accept = 'application/vnd.github+json' }
+          $run = Invoke-RestMethod -Headers $headers -Uri 'https://api.github.com/repos/nortja/atlas-command/actions/runs/34310991868'
+          if ($run.status -cne 'completed' -or $run.conclusion -cne 'success' -or $run.head_sha -cne $tested -or $run.path -cne '.github/workflows/windows-runtime.yml') {
+            throw 'Recorded successful native test could not be verified.'
+          }
+          $paths = @('app','native','build/Build-Store.ps1','packaging/AppxManifest.template.xml','packaging/StoreAssets','packaging/store-config.json')
+          & git diff --exit-code --no-ext-diff $tested HEAD -- @paths
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime or packaging inputs changed; review and repeat relevant tests before proceeding.' }
+      - name: Check recipe syntax and engineering safeguards
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($path in @('build/Package-Check.ps1','build/Build-Store.ps1')) {
+            $tokens = $null; $errors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD $path), [ref]$tokens, [ref]$errors)
+            if ($errors.Count) { $errors | Format-List; throw ('PowerShell syntax errors: ' + $path) }
+          }
+          node --test tests/package-check.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Engineering source checks failed.' }
+      - name: Compile, package and inspect the unsigned MSIX on this runner
+        shell: pwsh
+        run: ./build/Package-Check.ps1
+      - name: Retain only the engineering package and reports privately for three days
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4, resolved from official action
+        with:
+          name: atlas-engineering-package-DO-NOT-INSTALL
+          path: |
+            dist/*_ENGINEERING-DO-NOT-INSTALL.msix
+            dist/BUILD-REPORT.json
+            dist/SHA256SUMS.txt
+            dist/READ-FIRST.txt
+          retention-days: 3
+          if-no-files-found: error
+      - name: Remove temporary packaging directories from the disposable runner
+        if: always()
+        shell: pwsh
+        run: |
+          foreach ($path in @('obj','dist')) {
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
+          }
+# No scheduled or push trigger. The production Store preparation workflow remains gated.
