@@ -36,6 +36,21 @@ function normalize(raw){
  const siteId=text(raw.siteId,'Linked site identifier',200);
  return {id,name:text(raw.name,'Camera name',100,true),host:address(raw.host),mode:choice(raw.mode,MODES,'connection mode','local'),method:choice(raw.method,METHODS,'connection method','undecided'),port:optionalNumber(raw.port,'Port',1,65535,true),path:endpointPath(raw.path),location:text(raw.location,'Location label',160),locality:text(raw.locality,'Town / locality',100),region:text(raw.region,'State / region',100),country:text(raw.country,'Country',100),lat,lon,locationSource:lat===null?'not-specified':'user-reference',siteId,description:text(raw.description,'Description',2000),placement:text(raw.placement,'Mounting / access notes',1500),facing:optionalNumber(raw.facing,'Facing direction',0,359.9),makeModel:text(raw.makeModel,'Make / model',160),deployment:choice(raw.deployment,STATES,'placement status','planned'),installedOn:isoDate(raw.installedOn),tags:[...new Set(tags.map(t=>text(t,'Tag',32)).filter(Boolean))]};
 }
+function readiness(raw){
+ const p=normalize(raw),remote=p.mode==='remote'||p.mode==='both',hasLocation=Boolean(p.location||p.locality||p.region||p.country),hasPurpose=Boolean(p.description||p.siteId),methodChosen=p.method!=='undecided',hasPort=p.port!==null;
+ const checks=[
+  {id:'identity',label:'Camera identity',state:'ready',detail:p.name+' · '+p.host},
+  {id:'location',label:'Location context',state:hasLocation?'ready':'optional',detail:hasLocation?'Location details saved':'Optional: add a location label, locality, region, or country'},
+  {id:'purpose',label:'Research context',state:hasPurpose?'ready':'optional',detail:hasPurpose?'Description or linked site saved':'Optional: describe what the camera overlooks or link a research site'},
+  {id:'method',label:'Connection method',state:methodChosen?'ready':'needs-input',detail:methodChosen?METHODS[p.method]:'Choose ONVIF, RTSP/RTSPS, MJPEG, or snapshot mode'},
+  {id:'port',label:'Service / stream port',state:hasPort?'ready':'needs-input',detail:hasPort?String(p.port):'Add the camera service or stream port before a route test'},
+  {id:'route',label:remote?'Remote private route':'Local network route',state:'needs-test',detail:remote?'Needs an authorized private route/VPN or supported secure provider test':'Needs a real reachability test from this computer'},
+  {id:'credentials',label:'Camera credentials',state:'blocked',detail:'Secure credential storage and authenticated transport are not implemented yet'},
+  {id:'playback',label:'Decoded camera media',state:'blocked',detail:'A reachable port will not count as working playback until video/snapshot decoding succeeds'}
+ ];
+ const required=checks.filter(c=>!['optional'].includes(c.state)),ready=required.filter(c=>c.state==='ready').length;
+ return Object.freeze({ready,required:required.length,checks:Object.freeze(checks.map(c=>Object.freeze(c))),canRouteTest:methodChosen&&hasPort,canPlayback:false});
+}
 function library(raw){
  if(raw==null)return {schemaVersion:1,profiles:[]};
  if(raw.schemaVersion!==1||!Array.isArray(raw.profiles)||raw.profiles.length>MAX_PROFILES)throw Error('Camera profiles need recovery. Existing data has not been replaced.');
@@ -71,5 +86,5 @@ function search(profiles,query='',mode='all'){
  return profiles.filter(p=>(mode==='all'||p.mode===mode||p.mode==='both')&&fold([p.name,p.location,p.locality,p.region,p.country,p.host,p.description,p.makeModel,...p.tags].join(' ')).includes(q));
 }
 function shareableWorkspace(state){const value=copy(state);if(value.settings)delete value.settings.fieldCameras;return value;}
-return Object.freeze({MAX_PROFILES,MODES,METHODS,STATES,address,normalize,library,store,search,shareableWorkspace});
+return Object.freeze({MAX_PROFILES,MODES,METHODS,STATES,address,normalize,readiness,library,store,search,shareableWorkspace});
 });
