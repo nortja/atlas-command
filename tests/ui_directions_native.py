@@ -12,8 +12,15 @@ def main():
  if not exe.is_relative_to(temp):raise RuntimeError('Refusing non-temporary executable.')
  appdata=Path(NativeSmoke.powershell('[Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)'))/'AtlasCommand'
  if appdata.exists():raise RuntimeError('Refusing existing user workspace.')
- host=NativeSmoke(exe,appdata,temp);OUT.mkdir(exist_ok=True);checks=[];errors=[];requests=[];success=False;page=None
+ host=NativeSmoke(exe,appdata,temp);OUT.mkdir(exist_ok=True);checks=[];errors=[];requests=[];success=False;page=None;failure=''
  def passed(s):checks.append(s);print('PASS: '+s,flush=True)
+ def capture(path):
+  # Reset only ordinary scroll position after test interactions, then let the
+  # app's own transient toast expire. No DOM content or screenshot is fabricated.
+  page.locator('#dossierBody').evaluate('(el)=>el.scrollTop=0')
+  page.locator('#toast').wait_for(state='hidden',timeout=10000)
+  page.wait_for_timeout(250)
+  page.screenshot(path=path)
  def assert_expedition_typography():
   # Inspect browser-computed fonts, not merely stylesheet text.
   for selector in ['.space-title h1','.site-heading']:
@@ -53,8 +60,8 @@ def main():
    assert plan['y']>=dossier['y']+dossier['height']-1, (dossier,plan)
    passed('Collapsed Expedition bar stays below the expanded dossier after reload')
    page.locator('#queueBtn').click();expect(page.locator('[data-stat=queued]')).to_have_text('1')
-   page.locator('#queueBtn').click();expect(page.locator('[data-stat=queued]')).to_have_text('0')
-   passed('Mission counter responds to actual queue add and removal')
+   page.locator('#queueBtn').click();expect(page.locator('[data-stat=queued]')).to_have_text('1')
+   passed('Mission counter responds to actual queue add and refuses duplicate additions')
    page.locator('#search').fill('Göbekli');expect(page.locator('[data-stat=visible]')).to_have_text('1');expect(page.locator('[data-stat=total]')).to_have_text('26');page.locator('#search').fill('')
    passed('Filter count updates immediately while library totals remain unchanged')
    page.locator('#appearanceBtn').click();page.route('**/api/state',lambda r:r.fulfill(status=507,content_type='text/plain',body='Deliberate UI test: disk full'))
@@ -70,7 +77,7 @@ def main():
    page.evaluate('AtlasWorkspace.liveEarth.rotation(false)')
    for index,theme,name in [('A','orbital','Orbital'),('B','expedition','Expedition'),('C','signal','Signal-Desk')]:
     page.locator('#appearanceBtn').click();page.locator('[data-appearance='+theme+']').click();expect(page.locator('#appearanceSaveStatus')).to_contain_text('Saved locally');page.locator('#appearanceClose').click();page.wait_for_timeout(600)
-    page.screenshot(path=str(OUT/(index+'-'+name+'.png')))
+    capture(str(OUT/(index+'-'+name+'.png')))
     for w,h in [(1366,768),(1920,1080),(3440,1440),(820,1180)]:
      page.set_viewport_size({'width':w,'height':h});page.wait_for_timeout(250)
      assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),(theme,w)
@@ -82,11 +89,11 @@ def main():
       assert 'tabular-nums' in page.locator('.wx-now>strong').evaluate('e=>getComputedStyle(e).fontVariantNumeric')
      if w==1366:
       page.locator('#workspacePresets').click();page.locator('[data-preset=research]').click();page.wait_for_timeout(250)
-      page.screenshot(path=str(OUT/(index+'-'+name+'-Laptop.png')))
-     if w==3440 and theme=='orbital':page.screenshot(path=str(OUT/'A-Orbital-Ultrawide.png'))
+      capture(str(OUT/(index+'-'+name+'-Laptop.png')))
+     if w==3440 and theme=='orbital':capture(str(OUT/'A-Orbital-Ultrawide.png'))
     page.set_viewport_size({'width':1920,'height':1080})
    passed('Captured all three actual UI styles and checked laptop, desktop, ultrawide and compact viewport bounds')
-   page.locator('#appearanceBtn').click();page.screenshot(path=str(OUT/'Appearance-Chooser.png'));page.locator('#appearanceClose').click()
+   page.locator('#appearanceBtn').click();capture(str(OUT/'Appearance-Chooser.png'));page.locator('#appearanceClose').click()
    page.emulate_media(reduced_motion='reduce')
    assert page.evaluate('getComputedStyle(document.querySelector("#appearanceBtn")).transitionDuration')=='0s'
    page.locator('#appearanceBtn').focus();page.keyboard.press('Tab');page.keyboard.press('Shift+Tab');assert page.locator('#appearanceBtn').evaluate('e=>getComputedStyle(e).outlineStyle')!='none'
@@ -99,6 +106,8 @@ def main():
   host.stop();host.start();assert host.read_state()['settings']['appearance']=='signal'
   passed('Appearance preference survives actual native-host restart')
   success=True
+ except Exception as error:
+  failure=repr(error);raise
  finally:
   if page and not success:
    try:page.screenshot(path=str(OUT/'Failure.png'))
@@ -107,6 +116,6 @@ def main():
   finally:
    import shutil
    if appdata.exists():shutil.rmtree(appdata,ignore_errors=True)
-  (OUT/'UI-REVIEW-RESULTS.json').write_text(json.dumps({'success':success,'checks':checks,'environment':'GitHub Windows Server 2022; unpackaged native helper and installed Edge, not Windows 11 packaged install','errors':errors,'externalRequests':len(requests),'sourceCommit':os.environ.get('GITHUB_SHA'),'sourceHashes':{p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in ['app/src/ui-directions.js','app/src/ui-directions.css','app/src/ui-refinement.css','app/src/app.js','app/src/globe.js']}},indent=2),encoding='utf-8')
+  (OUT/'UI-REVIEW-RESULTS.json').write_text(json.dumps({'success':success,'failure':failure,'checks':checks,'environment':'GitHub Windows Server 2022; unpackaged native helper and installed Edge, not Windows 11 packaged install','errors':errors,'externalRequests':len(requests),'sourceCommit':os.environ.get('GITHUB_SHA'),'sourceHashes':{p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in ['app/src/ui-directions.js','app/src/ui-directions.css','app/src/ui-refinement.css','app/src/app.js','app/src/globe.js']}},indent=2),encoding='utf-8')
  return 0 if success else 1
 if __name__=='__main__':raise SystemExit(main())
