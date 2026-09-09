@@ -1,0 +1,22 @@
+{
+  "publisherDisplayNameRequested": "Atlas Command Center",
+  "accountCreation": "OWNER_REPORTS_COMPLETED",
+  "identityVerification": "NOT_INDEPENDENTLY_CHECKED",
+  "nameReservation": "OWNER_SUPPLIED_PRODUCT_IDENTITY_NOT_INDEPENDENTLY_CHECKED",
+  "partnerCenterIdentity": "APPLIED_FROM_OWNER_MESSAGE",
+  "audienceConfiguration": "PRIVATE_INTENT_ONLY_NOT_APPLIED",
+  "windowsCompilation": "NOT_RUN",
+  "windowsInstallAndRuntimeTests": "NOT_RUN",
+  "windowsAppCertificationKit": "NOT_RUN",
+  "sentinelOneReview": "UNRESOLVED",
+  "storeSubmission": "NOT_SUBMITTED",
+  "storeSigning": "NOT_SIGNED",
+  "paidServicesEnabled": false,
+  "mayReleaseToOwner": false,
+  "ownerName": "Jaison Norton",
+  "identityName": "AtlasCommandCenter.AtlasCommand",
+  "identityPublisher": "CN=C67667CB-8089-40FE-AA2B-2AC007243585",
+  "publisherDisplayName": "Atlas Command Center",
+  "windowsCompatibilityVersion": "PENDING_ACTUAL_TEST_RECORD",
+  "remoteBuild": "NO_CONNECTED_OR_AUTHORIZED_RUNNER"
+}

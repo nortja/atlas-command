@@ -1,0 +1,19 @@
+{
+  "passed": [
+    "Initial render: 26 starter records, projected globe points and no startup exception",
+    "Search and site selection enter Mission mode",
+    "LiDAR category and archaeological timeline filters preserve all-era exceptions",
+    "Site creation at zero coordinates, escaped text and notebook serialization",
+    "Local image attachment and blob preview through the fixture media adapter",
+    "Private mission queue and manual cost arithmetic, with booking disabled",
+    "Manual axial-angle comparison handles the north crossing without creating a prediction",
+    "CSV import review, confirmation and duplicate prevention",
+    "Google Earth KML roundtrip and bounded KMZ deflate decompression",
+    "Panel coordinates, notes, sites and preferences restore from a serialized workspace",
+    "Laptop, ultrawide and compact layouts render without horizontal page overflow",
+    "Corrupt stored JSON stops startup without overwriting original bytes",
+    "No uncaught renderer errors during smoke workflow"
+  ],
+  "failed": [],
+  "environment": "Chromium about:blank offline fixture; test storage adapter, not native hosting"
+}

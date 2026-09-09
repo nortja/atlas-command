@@ -1,0 +1,24 @@
+ATLAS COMMAND — DATA AND RECOVERY NOTES
+
+Keep an independent backup before testing, repairing or uninstalling a packaged edition.
+The old prototype intended to use %LOCALAPPDATA%\AtlasCommand\Data. It may never have
+created data if SentinelOne blocked its first run. Do not restore the blocked launcher
+to find out. Preserve original Google Earth CSV/KML/KMZ files independently.
+
+After an approved Windows release is installed, Settings > Open local data folder is
+the authoritative way to locate the folder used by that running build. MSIX can redirect
+application-data access. Automatic migration from the old helper is NOT implemented or
+tested in this preparation.
+
+Workspace JSON exports contain records, notes, plans and layouts, but are NOT complete
+media backups. Copy the entire data directory (including media) for a complete snapshot.
+The current JSON import merges site records; it is NOT a full restoration operation for
+all settings and media. Do not overwrite your only copy during testing.
+
+If workspace loading fails, the renderer is designed to stop rather than reset the file.
+Leave the original workspace.json, workspace.json.bak, dated backups and media intact.
+Any recovery should be performed from copies after the application has stopped.
+Never send private notes, precise sensitive-site coordinates or personal attachments
+to public diagnostic services. host.log may also include sensitive local paths.
+
+This source preparation does not install, repair, remove or migrate anything on your PC.

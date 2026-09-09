@@ -1,0 +1,55 @@
+# Preparation workflow, not yet installed or run in a connected repository.
+# Before enabling: pin the two action releases below to reviewed full commit SHAs,
+# use a PRIVATE repository, and keep paid overage disabled in GitHub billing.
+name: Prepare private Store candidate
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_build:
+        description: 'Build only; no Store upload. Free quota and runner policy have been checked.'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: atlas-store-preparation
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: ${{ inputs.confirm_build && vars.ATLAS_ALLOW_BUILD == 'true' }}
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - name: Check out source without retaining credentials
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Validate PowerShell syntax without executing the build script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $PWD 'build/Build-Store.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { $errors | Format-List; throw 'Build script syntax errors.' }
+      - name: Check owner-supplied package configuration
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath 'packaging/store-config.json')) { throw 'Store identity is missing.' }
+          $config = Get-Content -LiteralPath 'packaging/store-config.json' -Raw | ConvertFrom-Json
+          if ($config.maxVersionTested -match 'REPLACE') { throw 'Complete and record Windows compatibility testing before packaging.' }
+      - name: Compile and package on the Windows runner only
+        shell: pwsh
+        run: ./build/Build-Store.ps1
+      - name: Preserve submission candidate and build report privately
+        uses: actions/upload-artifact@v7
+        with:
+          name: atlas-private-store-candidate-not-an-installer
+          path: |
+            dist/*_STORE-SUBMISSION-ONLY.msix
+            dist/BUILD-REPORT.json
+          retention-days: 3
+          if-no-files-found: error
+# Deliberately no push schedule, store submission, certificate upload, deployment,
+# credential request, updater service, or installation on the owner's computer.

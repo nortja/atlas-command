@@ -1,0 +1,48 @@
+HISTORICAL SETUP REFERENCE: the owner has since reported completing account creation and supplied the product identity. See README.md for the current status.
+
+ATLAS COMMAND — OWNER ACCOUNT SETUP
+Requested publisher: Jaison Norton
+Purpose: private personal exploration application
+Status: the account has NOT been created or submitted by this chat.
+
+START HERE
+https://storedeveloper.microsoft.com/
+
+Use the Store developer site's free individual-registration entry point.
+Do not start through Azure Artifact Signing, a certificate seller, Xbox enrollment,
+or an unrelated business partner program. No paid subscription is part of this plan.
+
+ON MICROSOFT'S SITE
+Choose the free Individual developer option and sign in with a personal Microsoft
+account. A work/school-managed account is not the supported individual-account login.
+Use accurate personal information and review the publisher display name as Jaison Norton.
+Complete the ID-and-selfie verification in Microsoft's guided flow. Keep those documents,
+passwords and security codes on Microsoft's site, not in chat or in the source bundle.
+Review the developer agreement yourself before accepting it. When complete, enter the
+Partner Center Apps & Games workspace using the same account.
+
+IF PAYMENT APPEARS
+Stop; do not pay. Return to the Store developer entry point above. Microsoft's current
+instructions distinguish the free onboarding flow from legacy entry points. A cropped
+screenshot of an unexpected screen can help troubleshoot without revealing identity data.
+
+NEXT CHECKPOINT
+Send a screenshot of the Apps & Games overview after setup, with email, address,
+identification, account numbers and security details hidden. The app name can then be
+reserved and the exact package identity retrieved. Atlas Command is a proposed name,
+not a confirmed reservation.
+
+PRIVACY SETTING FOR THE LATER APP SUBMISSION
+Use Private audience under Pricing and availability > Visibility > Audience.
+Create a known-user group containing only the personal Microsoft account intended to
+install the app. Price: Free. Leave any scheduled conversion to a public audience unset.
+Merely hiding a public listing from search does not restrict it to you.
+These settings have NOT yet been applied to any online account.
+
+OFFICIAL INSTRUCTIONS (checked for this preparation)
+https://learn.microsoft.com/en-us/windows/apps/publish/partner-center/open-a-developer-account
+https://learn.microsoft.com/en-us/windows/apps/publish/whats-new-individual-developer
+https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/msix/visibility-options
+
+No account, app reservation, submission or paid service was created in this session.
+Keep the original Atlas launcher quarantined and SentinelOne enabled.

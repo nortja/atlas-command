@@ -1,0 +1,12 @@
+dist/
+obj/
+test-results/
+__pycache__/
+*.pyc
+workspace*.json
+*.pfx
+*.p12
+*.key
+*.log
+.env
+.env.*

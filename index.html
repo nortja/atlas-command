@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'">
+<title>Atlas Command · Your world, waiting</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+<div id="boot">ATLAS COMMAND <small>Opening your local observatory…</small></div>
+<header class="topbar">
+ <a class="brand" href="#" aria-label="Atlas Command home"><span class="brand-mark">A<span>⌁</span></span><span>ATLAS <b>COMMAND</b><small>EARTH DISCOVERY WORKSPACE</small></span></a>
+ <nav class="mode-switch" aria-label="Workspace mode"><button id="observatoryBtn" class="active">◉ Observatory</button><button id="missionBtn">⌖ Mission</button></nav>
+ <div class="top-actions"><span class="local-badge" id="storageBadge"><i></i> LOCAL FIRST</span><button id="importBtn" class="quiet">↓ Import atlas</button><button id="addBtn" class="primary">＋ Add site</button><button id="settingsBtn" class="icon-btn" title="Settings and data" aria-label="Settings and data">⚙</button></div>
+</header>
+<main id="workspace">
+ <canvas id="globe" aria-label="Interactive globe. Drag to rotate. Use the site list to select locations with a keyboard." tabindex="0"></canvas>
+ <div class="space-title"><span class="eyebrow" id="modeCaption">YOUR PERSONAL OBSERVATORY</span><h1 id="sceneTitle">The world is still full<br>of questions.</h1><p id="sceneSubtitle">Follow a signal. Find your next story.</p></div>
+ <div id="globeTooltip" class="globe-tooltip" hidden></div>
+ <div class="scene-meta"><span id="viewLabel">HOLOGRAPHIC VIEW</span><span>Modern land geometry · visual atmosphere</span></div>
+ <div class="globe-controls"><button id="spinBtn" title="Pause or resume globe rotation">Ⅱ Pause</button><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomIn" aria-label="Zoom in">＋</button><button id="homeView">⌾ Recenter</button></div>
+ <section class="panel catalog-panel" id="catalogPanel" data-panel="catalog">
+ <header class="panel-handle"><div><span class="panel-index">01</span><h2>Discovery atlas</h2></div><button class="collapse" title="Collapse panel" aria-label="Collapse discovery atlas">−</button></header>
+ <div class="panel-body"><label class="searchbox"><span>⌕</span><input id="search" placeholder="Find a site, country, or region…" autocomplete="off" aria-label="Search sites"><kbd>/</kbd></label>
+ <div class="category-row" id="categoryRow"></div>
+ <div class="filter-row"><select id="ratingFilter" aria-label="Mystery rating"><option value="">All mystery levels</option value="1">1 · Well understood</option value="2">2 · Some open questions</option value="3">3 · Active questions</option value="4">4 · Substantial unknowns</option value="5">5 · Major unresolved questions</option></select><span id="resultCount"></span></div>
+ <div id="siteList" class="site-list"></div>
+ <div class="catalog-foot"><span>PIN COLOR = MYSTERY LEVEL</span><div id="legend"></div></div></div><div class="resize-handle" aria-label="Resize panel"></div>
+ </section>
+ <section class="panel layers-panel" id="layersPanel" data-panel="layers"><header class="panel-handle"><div><span class="panel-index">02</span><h2>Layers & signals</h2></div><button class="collapse" aria-label="Collapse layers">−</button></header><div class="panel-body"><div id="layerControls"></div><button class="text-action" id="modulesBtn">View module registry <span>↗</span></button></div><div class="resize-handle" aria-label="Resize panel"></div></section>
+ <section class="panel dossier-panel" id="dossierPanel" data-panel="dossier"><header class="panel-handle"><div><span class="panel-index">03</span><h2>Site intelligence</h2></div><div><button id="editBtn" class="tiny" title="Edit selected site">Edit</button><button class="collapse" aria-label="Collapse site intelligence">−</button></div></header><div class="panel-body" id="dossierBody"></div><div class="resize-handle" aria-label="Resize panel"></div></section>
+ <section class="panel mission-panel" id="planPanel" data-panel="plan"><header class="panel-handle"><div><span class="panel-index">04</span><h2>Expedition desk</h2></div><button class="collapse" aria-label="Collapse expedition desk">−</button></header><div class="panel-body" id="planBody"></div><div class="resize-handle" aria-label="Resize panel"></div></section>
+ <div class="workspace-tools"><button id="resetLayout">⊞ Reset layout</button><button id="focusBtn">⤢ Globe focus</button><span>Drag panel headers · resize corners</span></div>
+</main>
+<footer class="timeline"><div class="timeline-title"><span class="eyebrow">TIME EXPLORER</span><strong id="yearLabel">Present day</strong></div><div class="timeline-track"><div class="timeline-presets"><button data-year="-100000">100,000 BCE</button><button data-year="-12000">12,000 BCE</button><button data-year="-5000">5,000 BCE</button><button data-year="-1">1 BCE</button><button id="presentBtn">Present</button></div><input id="timelineSlider" type="range" min="0" max="1000" value="1000" aria-label="Historical timeline"><div class="timeline-note" id="timelineNote">Timeline filters site records only. No reconstructed coastlines, sky, or magnetic model is loaded.</div></div><div class="timeline-settings"><label><input id="filterTime" type="checkbox"> Filter by era</label><label class="year-input"><input id="exactYear" type="number" value="2026" min="-100000" max="2100" aria-label="Exact year (negative for BCE)"><span>− = BCE</span></label></div></footer>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<dialog id="dialog"><div id="dialogContent"></div></dialog>
+<input id="fileImport" type="file" accept=".csv,.json,.geojson,.kml,.kmz" hidden>
+<input id="mediaImport" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,application/pdf" multiple hidden>
+<script src="assets/world.js"></script><script src="data/seed.js"></script><script src="src/core.js"></script><script src="src/globe.js"></script><script src="src/app.js"></script>
+</body></html>
