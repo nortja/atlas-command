@@ -1,0 +1,118 @@
+# Owner-authorized development only. Preserve existing $0 spending block and main.
+name: Validate private IP camera profiles
+on:
+  push:
+    branches: ['develop/ui-directions']
+    paths: ['.github/workflows/field-camera-profiles.yml','build/integrate_field_cameras.py','app/src/field-cameras.js','app/src/field-camera-desk.js','app/src/field-cameras.css','tests/field-cameras.test.cjs','tests/field_cameras_ui.py']
+permissions:
+  contents: write
+concurrency:
+  group: atlas-ui-review
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: ${{ github.event.repository.private && github.repository == 'nortja/atlas-command' && contains(github.event.head_commit.message, '[atlas-camera-profiles]') }}
+    runs-on: windows-2022
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Integrate reviewed source and run development code checks
+        shell: pwsh
+        run: |
+          python build/integrate_release_tools.py
+          if ($LASTEXITCODE -ne 0) { throw 'Source integration failed.' }
+          python build/integrate_ui_directions.py
+          if ($LASTEXITCODE -ne 0) { throw 'UI integration failed.' }
+          python build/integrate_field_cameras.py
+          if ($LASTEXITCODE -ne 0) { throw 'Camera profile integration failed.' }
+          node --check app/src/field-cameras.js
+          if ($LASTEXITCODE -ne 0) { throw 'Camera model syntax failed.' }
+          node --check app/src/field-camera-desk.js
+          if ($LASTEXITCODE -ne 0) { throw 'Camera desk syntax failed.' }
+          node --check app/src/app.js
+          if ($LASTEXITCODE -ne 0) { throw 'Application syntax failed.' }
+          node --check app/src/live-weather.js
+          if ($LASTEXITCODE -ne 0) { throw 'Weather syntax failed.' }
+          $null = New-Item -ItemType Directory field-camera-output -Force
+          $testFiles = @(Get-ChildItem tests/*.test.cjs | ForEach-Object { $_.FullName })
+          node --test @testFiles | Tee-Object field-camera-output/CODE-CHECKS.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Code checks failed.' }
+      - name: Compile temporary native helper on this disposable runner
+        id: compile
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $config = Get-Content packaging/store-config.json -Raw | ConvertFrom-Json
+          if ($config.version -ne '1.1.0.0' -or $config.developmentStatus -ne 'NOT_SUBMITTED_NOT_APPROVED') { throw 'Unexpected release status.' }
+          $stage = Join-Path $env:RUNNER_TEMP ('atlas-ui-' + [guid]::NewGuid().ToString('N'))
+          $null = New-Item -ItemType Directory -Path $stage
+          ('ATLAS_SMOKE_STAGE=' + $stage) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          Copy-Item -Path 'app/*' -Destination $stage -Recurse
+          Copy-Item native/AtlasCommand.exe.config $stage
+          $vs = Join-Path $stage 'VersionInfo.cs'
+          [IO.File]::WriteAllText($vs, 'using System.Reflection; [assembly: AssemblyVersion("1.1.0.0")] [assembly: AssemblyFileVersion("1.1.0.0")]', [Text.UTF8Encoding]::new($false))
+          $exe = Join-Path $stage 'AtlasCommand.exe'
+          $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          $arguments = @('/nologo','/codepage:65001','/target:winexe','/platform:x64','/optimize+','/warn:4','/warnaserror+',('/out:' + $exe),('/win32manifest:' + (Join-Path $PWD 'native/WindowsApp.manifest')),('/win32icon:' + (Join-Path $PWD 'native/AtlasCommand.ico')),'/reference:System.dll,System.Core.dll,System.Web.Extensions.dll,System.Windows.Forms.dll',(Join-Path $PWD 'native/AtlasHost.cs'),(Join-Path $PWD 'native/AssemblyInfo.cs'),$vs)
+          & $compiler @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'Native compilation failed.' }
+          ('ATLAS_SMOKE_EXE=' + $exe) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Verify existing workspace and unit controls
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir playwright==1.57.0
+          if ($LASTEXITCODE -ne 0) { throw 'Test driver setup failed.' }
+          python tests/next_ui_test.py
+          if ($LASTEXITCODE -ne 0) { throw 'Workspace regression failed.' }
+          python tests/weather_units_ui.py
+          if ($LASTEXITCODE -ne 0) { throw 'Units regression failed.' }
+      - name: Verify private profiles with actual native persistence
+        shell: pwsh
+        run: |
+          python tests/field_cameras_ui.py
+          if ($LASTEXITCODE -ne 0) { throw 'Camera profile UI checks failed.' }
+      - name: Commit only tested integrated development files
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:GITHUB_REF -cne 'refs/heads/develop/ui-directions') { throw 'Wrong development branch.' }
+          $paths = @('app/index.html','app/workspace-preview.html','app/src/app.js','app/src/core.js','app/src/live-weather.js','native/AtlasHost.cs','build/Build-Store.ps1','app/src/globe.js','tests/release_tools_ui.py','tests/ui_directions_native.py')
+          & git add -- @paths
+          if ($LASTEXITCODE -ne 0) { throw 'Staging failed.' }
+          $unexpected = @(git diff --cached --name-only | Where-Object { $_ -notin $paths })
+          if ($unexpected.Count) { throw 'Unexpected staged file.' }
+          & git diff --cached --quiet
+          if ($LASTEXITCODE -eq 1) {
+            git -c user.name='Atlas development automation' -c user.email='atlas-dev@users.noreply.github.com' commit -m 'Integrate tested private IP camera profiles and sharing exclusions'
+            if ($LASTEXITCODE -ne 0) { throw 'Development commit failed.' }
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('x-access-token:' + $env:GH_TOKEN))
+            Write-Output ('::add-mask::' + $encoded)
+            & git -c ('http.https://github.com/.extraheader=AUTHORIZATION: basic ' + $encoded) push origin HEAD:refs/heads/develop/ui-directions
+            if ($LASTEXITCODE -ne 0) { throw 'Branch moved; no force push used.' }
+          }
+          $report = Get-Content field-camera-output/FIELD-CAMERA-RESULTS.json -Raw | ConvertFrom-Json
+          $report | Add-Member -NotePropertyName materializedCommit -NotePropertyValue ((git rev-parse HEAD).Trim())
+          $report | ConvertTo-Json -Depth 12 | Set-Content field-camera-output/FIELD-CAMERA-RESULTS.json -Encoding utf8
+      - name: Retain preview images and test reports only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: atlas-field-camera-profiles-preview
+          path: |
+            field-camera-output/*.png
+            field-camera-output/FIELD-CAMERA-RESULTS.json
+            field-camera-output/CODE-CHECKS.txt
+            next-test-output/NEXT-TEST-RESULTS.json
+            weather-units-output/WEATHER-UNITS-RESULTS.json
+          retention-days: 3
+          if-no-files-found: warn
+      - name: Remove temporary executable
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:ATLAS_SMOKE_STAGE -and (Test-Path -LiteralPath $env:ATLAS_SMOKE_STAGE)) { Remove-Item -LiteralPath $env:ATLAS_SMOKE_STAGE -Recurse -Force }
+# No installer distribution, Store action, endpoint exception, or broad token permissions.
