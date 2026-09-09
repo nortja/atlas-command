@@ -3,6 +3,7 @@
    Solar approximation follows NOAA fractional-year equations; not historical ephemerides. */
 (function(root,factory){'use strict';const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else{root.AtlasLiveWeather=api;root.addEventListener('atlas:ready',()=>api.mount(root),{once:true});}})(typeof window==='object'?window:globalThis,function(){
 'use strict';
+const Refresh=typeof module==='object'&&module.exports?require('./data-refresh.js'):window.AtlasDataRefresh;
 const ENDPOINT='https://api.open-meteo.com/v1/forecast',POINT_TTL=20*60000,GRID_TTL=3*3600000,STALE=90*60000;
 const valid=n=>typeof n==='number'&&Number.isFinite(n),clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const number=(n,a,b)=>valid(n)&&n>=a&&n<=b?n:null;
@@ -35,7 +36,7 @@ function solar(now=Date.now()){
  const minutes=d.getUTCHours()*60+d.getUTCMinutes()+d.getUTCSeconds()/60,lon=((180-(minutes+eq)/4+540)%360)-180;
  return {lat:decl/RAD,lon,vector:[Math.cos(decl)*Math.cos(lon*RAD),Math.sin(decl),Math.cos(decl)*Math.sin(lon*RAD)]};
 }
-function config(raw){return {enabled:raw?.enabled===true,global:raw?.global!==false,cinematic:raw?.cinematic!==false,autoIdle:raw?.autoIdle!==false};}
+function config(raw){return {enabled:raw?.enabled===true,global:raw?.global!==false,cinematic:raw?.cinematic!==false,autoIdle:raw?.autoIdle!==false,refresh:Refresh.choice(raw?.refresh)};}
 function snapshot(value){
  if(!value||typeof value!=='object'||JSON.stringify(value).length>400000)throw Error('Invalid Live Earth storage.');
  const c=value.cache||{},out={config:config(value.config),cache:{points:{},grid:null}};
@@ -93,9 +94,9 @@ function mount(win){
   if($('#wxEnable'))$('#wxEnable').onclick=()=>settings();if($('#wxRefresh'))$('#wxRefresh').onclick=()=>loadPoint(true);
  }
  async function loadPoint(force=false){
-  if(!cfg.enabled||!chosen||doc.hidden)return;
+  if(!cfg.enabled||!chosen||doc.hidden||(!force&&cfg.refresh==='manual'))return;
   const now=Date.now(),p={...chosen},k=key(p),saved=cache.points[k];
-  sample=saved||null;if(saved&&!force&&now-saved.fetchedAt<POINT_TTL){card();return;}
+  sample=saved||null;if(saved&&!force&&now-saved.fetchedAt<Refresh.interval(cfg.refresh,'point')){card();return;}
   if(now-lastPointAttempt<2500){win.clearTimeout(selectionTimer);selectionTimer=win.setTimeout(()=>loadPoint(force),2500-(now-lastPointAttempt)+25);card();return;}lastPointAttempt=now;pointRequests=pointRequests.filter(t=>now-t<3600000);if(pointRequests.length>=60){pointError='Hourly refresh limit reached. Cached weather remains available.';card();return;}pointRequests.push(now);
   pointAbort?.abort();const abort=new AbortController();pointAbort=abort;pointBusy=true;pointError='';card();
   const timeout=win.setTimeout(()=>abort.abort(),15000);
@@ -105,8 +106,8 @@ function mount(win){
   }catch(e){if(chosen&&key(chosen)===k&&cfg.enabled){pointSource='saved';pointError=e.name==='AbortError'?'Weather request timed out or was cancelled.':e.message;}}
   finally{win.clearTimeout(timeout);if(pointAbort===abort){pointBusy=false;card();updateRibbon();}}
  }
- async function loadGlobal(){
-  const now=Date.now();if(!cfg.enabled||!cfg.global||doc.hidden||gridBusy||now-lastGridAttempt<15*60000||(cache.grid&&now-cache.grid.fetchedAt<GRID_TTL))return;
+ async function loadGlobal(force=false){
+  const now=Date.now();if(!cfg.enabled||!cfg.global||doc.hidden||gridBusy||(!force&&cfg.refresh==='manual')||now-lastGridAttempt<15*60000||(cache.grid&&now-cache.grid.fetchedAt<(force?GRID_TTL:Refresh.interval(cfg.refresh,'global'))))return;
   lastGridAttempt=now;gridBusy=true;gridError='';const abort=new AbortController();gridAbort=abort;const timeout=win.setTimeout(()=>abort.abort(),90000);updateRibbon();
   try{const points=grid(),samples=[];for(let i=0;i<points.length;i+=48){if(!cfg.enabled||!cfg.global||abort.signal.aborted)throw Error('Global refresh stopped.');const batch=points.slice(i,i+48),raw=await fetchJSON(url(batch,true),abort.signal);if(!Array.isArray(raw)||raw.length!==batch.length)throw Error('Global response is incomplete.');raw.forEach((r,j)=>samples.push(normalize(r,batch[j],Date.now(),true)));await new Promise(r=>win.setTimeout(r,300));}
    if(!cfg.enabled||!cfg.global||abort.signal.aborted)return;cache.grid={samples,time:Math.min(...samples.map(s=>s.time)),fetchedAt:Date.now()};await persist();
@@ -118,11 +119,13 @@ function mount(win){
   sheet.innerHTML='<button class="dialog-close" id="earthClose">Close</button><span class="eyebrow">LIVE EARTH / OBSERVATORY</span><h2 id="earthTitle">Quiet planet. Local detail.</h2><p>Soft weather globally, stronger around the selected site. The card follows your saved °F / mph or °C / km/h preference.</p>'+
    '<div class="earth-consent"><b>Before connecting</b><p>Open-Meteo receives your IP address and requested coordinates, rounded to 0.01°. Site names, notes, photos and documents are not sent. Global coverage requests use a fixed public grid. This free endpoint is for personal, non-commercial use, with provider limits.</p><p>'+link+' · <a href="https://open-meteo.com/en/terms" target="_blank" rel="noopener noreferrer">Provider terms & privacy</a></p></div>'+
    '<div class="earth-settings-grid"><label><input id="earthEnabled" type="checkbox" '+(cfg.enabled?'checked':'')+'> Connect weather feed</label><label><input id="earthGlobal" type="checkbox" '+(cfg.global?'checked':'')+'> Subtle global clouds & precipitation</label><label><input id="earthCinema" type="checkbox" '+(cfg.cinematic?'checked':'')+'> Gentle cinematic motion</label><label><input id="earthIdle" type="checkbox" '+(cfg.autoIdle?'checked':'')+'> Observatory after 60 seconds idle</label></div>'+
-   '<p>Local conditions refresh every 20 minutes. The 288-point global model grid refreshes every 3 hours while visible. The globe is a stylized view of sampled model data—not satellite imagery, radar, measured storm boundaries or lightning strikes.</p><p>Day/night is calculated for the current UTC time. Lunar illumination uses an approximate mean cycle. Today’s overlays hide when the history slider is moved into the past. Reduced-motion preferences are respected; there is no flashing lightning or thunder audio.</p>'+
-   '<p>Weather is not an emergency warning service. Official alerts, a measured lightning feed, solar activity and moonrise/moonset are not connected.</p><p id="earthSaveStatus" role="status">'+(gridError?escape(gridError):'Settings and last retrieved weather are stored on this computer.')+'</p><div class="next-actions"><button id="earthClear">Clear cached weather</button><button class="primary" id="earthApply" '+(controlsBusy?'disabled':'')+'>'+(cfg.enabled?'Save settings':'Enable selected features')+'</button></div>';
-  $('#earthClose').onclick=()=>sheet.close();$('#earthApply').onclick=async()=>{if(controlsBusy)return;const previous=cfg;cfg={enabled:$('#earthEnabled').checked,global:$('#earthGlobal').checked,cinematic:$('#earthCinema').checked,autoIdle:$('#earthIdle').checked};controlsBusy=true;$('#earthApply').disabled=true;
-   if(!cfg.enabled){pointAbort?.abort();gridAbort?.abort();wake();}else if(!cfg.global)gridAbort?.abort();
+   '<label class="form-field">Weather data refresh<select id="earthRefreshPolicy">'+Object.entries(Refresh.PROFILES).map(([id,p])=>'<option value="'+id+'" '+(cfg.refresh===id?'selected':'')+'>'+p.label+'</option>').join('')+'</select></label><p id="earthRefreshDetail">'+Refresh.profile(cfg.refresh).detail+'</p><p>Refreshes run only while Atlas is open, visible and weather is enabled. Nothing installs a background service or downloads new application code. Daily mode can leave weather stale; timestamps remain visible.</p><p>The globe is a stylized view of sampled model data—not satellite imagery, radar, measured storm boundaries or lightning strikes.</p><p>Day/night is calculated for the current UTC time. Lunar illumination uses an approximate mean cycle. Today’s overlays hide when the history slider is moved into the past. Reduced-motion preferences are respected; there is no flashing lightning or thunder audio.</p>'+
+   '<p>Weather is not an emergency warning service. Official alerts, a measured lightning feed, solar activity and moonrise/moonset are not connected.</p><p id="earthSaveStatus" role="status">'+(gridError?escape(gridError):'Settings and last retrieved weather are stored on this computer.')+'</p><div class="next-actions"><button id="earthRefreshNow">Refresh weather now</button><button id="earthClear">Clear cached weather</button><button class="primary" id="earthApply" '+(controlsBusy?'disabled':'')+'>'+(cfg.enabled?'Save settings':'Enable selected features')+'</button></div>';
+  $('#earthClose').onclick=()=>sheet.close();$('#earthApply').onclick=async()=>{if(controlsBusy)return;const previous=cfg;cfg={enabled:$('#earthEnabled').checked,global:$('#earthGlobal').checked,cinematic:$('#earthCinema').checked,autoIdle:$('#earthIdle').checked,refresh:Refresh.choice($('#earthRefreshPolicy').value)};controlsBusy=true;$('#earthApply').disabled=true;
+   if(!cfg.enabled||cfg.refresh==='manual'){pointAbort?.abort();gridAbort?.abort();wake();}else if(!cfg.global)gridAbort?.abort();
    try{await persist();$('#earthSaveStatus').textContent='Saved locally.';sheet.close();if(cfg.enabled){loadPoint();loadGlobal();}card();updateRibbon();}catch{cfg=previous;$('#earthSaveStatus').textContent='Could not save settings. Previous choice retained.';}finally{controlsBusy=false;if($('#earthApply'))$('#earthApply').disabled=false;}};
+  $('#earthRefreshPolicy').onchange=()=>{$('#earthRefreshDetail').textContent=Refresh.profile($('#earthRefreshPolicy').value).detail;};
+  $('#earthRefreshNow').onclick=()=>{if(!cfg.enabled){$('#earthSaveStatus').textContent='Save an enabled weather connection first.';return;}loadPoint(true);loadGlobal(true);$('#earthSaveStatus').textContent='Refresh requested. Global coverage stays rate-limited to one successful retrieval per 3 hours.';};
   $('#earthClear').onclick=async()=>{if(controlsBusy)return;pointAbort?.abort();gridAbort?.abort();const before=cache;cache={points:{},grid:null};sample=null;try{await persist();$('#earthSaveStatus').textContent='Weather cache cleared. Saved research is unchanged. Earlier backups and exports are not deleted.';card();updateRibbon();}catch{cache=before;sample=chosen?cache.points[key(chosen)]||null:null;$('#earthSaveStatus').textContent='Cache could not be cleared.';}};
   if(open&&!sheet.open)sheet.showModal();
  }

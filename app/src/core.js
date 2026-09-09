@@ -5,6 +5,7 @@
 const COLORS={1:'#52d6b3',2:'#6caeff',3:'#e9c572',4:'#f39765',5:'#f17699'};
 const CATEGORIES=['archaeology','lidar','mineral','fossil','personal'];
 const MODULES=[
+ {id:'cameras',name:'Camera desk',status:'Snapshots & links',detail:'Opt-in USGS periodic snapshots in the app and official NASA/NPS livestream links. No embedded continuous video, arbitrary camera search or recording.'},
  {id:'archaeology',name:'Ancient atlas',status:'Local',detail:'Sites, chronology, mystery ratings, evidence and field notes.'},
  {id:'lidar',name:'LiDAR intelligence',status:'Local records',detail:'Separate all-era catalog. Survey leads are not unvisited-site claims. LAS/LAZ point-cloud rendering is not included.'},
  {id:'magnetic',name:'Magnetic research',status:'Workbench',detail:'Manual, sourced axis-versus-declination comparison. No field model or prediction engine is connected.'},

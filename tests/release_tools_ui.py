@@ -12,7 +12,7 @@ def main():
  if not exe.is_relative_to(temp):raise RuntimeError('Disposable executable required.')
  appdata=Path(NativeSmoke.powershell('[Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)'))/'AtlasCommand'
  if appdata.exists():raise RuntimeError('Refusing existing user workspace.')
- host=NativeSmoke(exe,appdata,temp);OUT.mkdir(exist_ok=True);checks=[];errors=[];network=[];frames=[];success=False;page=None
+ host=NativeSmoke(exe,appdata,temp);OUT.mkdir(exist_ok=True);checks=[];errors=[];network=[];frames=[];responses=[];success=False;page=None
  def passed(text):checks.append(text);print('PASS:',text,flush=True)
  def wait(fn,seconds=35):
   end=time.monotonic()+seconds
@@ -22,7 +22,21 @@ def main():
   raise AssertionError('Timed out: '+page.locator('#cameraStatus').inner_text())
  def capture_response(r):
   if '/api/camera/' in r.url and r.status==200:
-   frames.append({'camera':r.url.rsplit('/',1)[-1],'sha256':hashlib.sha256(r.body()).hexdigest(),'bytes':len(r.body()),'fetchedAt':r.headers.get('x-atlas-camera-fetched-at'),'modifiedAt':r.headers.get('x-atlas-camera-modified')})
+   responses.append(r)
+ def collect_responses():
+  if not responses:raise AssertionError('No native camera response received.')
+  r=responses.pop();responses.clear()
+  # Read the same registered native endpoint while its in-memory frame is cached.
+  # The browser already decoded that image. Matching fetch time and length links
+  # the inspected bytes to the UI response without weakening connect-src for blob URLs.
+  ident=r.url.rsplit('/',1)[-1]
+  status,headers,body=host.expect('POST','api/camera/'+ident,200,headers={'X-Atlas-Request':'local'})
+  assert body[:3]==bytes([255,216,255]) and len(body)>10000
+  assert len(body)==int(r.headers['content-length'])
+  assert headers['x-atlas-camera-fetched-at']==r.headers['x-atlas-camera-fetched-at']
+  dims=page.locator('#cameraView img').evaluate('(img)=>({width:img.naturalWidth,height:img.naturalHeight})')
+  assert dims['width']>=500
+  frames.append({'camera':ident,'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body),**dims,'fetchedAt':headers['x-atlas-camera-fetched-at'],'modifiedAt':headers.get('x-atlas-camera-modified'),'verification':'Native cached payload matches browser response fetch time and length; browser decoded the actual image'})
  try:
   host.start();host.expect('GET','api/camera/K2cam',405);host.expect('POST','api/camera/K2cam',403,headers={'X-Atlas-Request':'local'})
   host.expect('POST','api/camera/unknown',404,headers={'X-Atlas-Request':'local'})
@@ -43,6 +57,7 @@ def main():
    page.locator('#cameraPrivacy summary').click();page.locator('#cameraLoad').click()
    wait(lambda:page.locator('#cameraStatus').get_attribute('data-state')=='SNAPSHOT')
    assert page.locator('#cameraView img').evaluate('(i)=>i.naturalWidth')>=500
+   collect_responses()
    assert frames and frames[-1]['camera']=='K2cam' and frames[-1]['bytes']>10000
    expect(page.locator('#cameraStatus')).to_contain_text('Capture time')
    page.screenshot(path=str(OUT/'01-Camera-Desk.png'))
@@ -51,6 +66,7 @@ def main():
    page.locator('#cameraFavorites').click();expect(page.locator('.camera-choice')).to_have_count(1);page.locator('#cameraFavorites').click()
    page.locator('[data-camera="F1cam"]').click();page.locator('#cameraLoad').click()
    wait(lambda:page.locator('#cameraStatus').get_attribute('data-state')=='SNAPSHOT')
+   collect_responses()
    assert frames[-1]['camera']=='F1cam'
    expect(page.locator('#cameraCaption')).to_contain_text('Celsius scale')
    page.screenshot(path=str(OUT/'02-Thermal-Camera.png'))

@@ -42,18 +42,20 @@ class Globe{
  draw(t){
   if(this.w<=0||this.h<=0)return;let ctx=this.ctx,W=this.w,H=this.h;ctx.clearRect(0,0,W,H);
   this.cx=W/2;this.cy=H*(W<950?.56:.55);this.radius=Math.min(H*.365,W*(W<950?.34:.248))*this.zoom;
+  if(this.appearance&&W>=950){const focus=document.body.classList.contains('globe-focus');this.cy=H*(focus?.54:.66);this.radius=Math.min(H*(focus?.40:H<650?.265:H<1000?.29:.33),W*.248)*this.zoom;}
+  const colors=this.appearance==='expedition'?{coast:'#c8ad7caa',inner:'#343528e8',middle:'#222820ee',edge:'#474b37f0',rim:'#d4bc86aa'}:this.appearance==='signal'?{coast:'#7fc8b5aa',inner:'#173b36e8',middle:'#112b2aee',edge:'#25554df0',rim:'#87dfc0aa'}:null;
   let R=this.radius;this.cl=Math.cos(this.lon*RAD);this.sl=Math.sin(this.lon*RAD);this.cp=Math.cos(this.lat*RAD);this.sp=Math.sin(this.lat*RAD);
   if(this.options.stars){for(const s of this.stars){ctx.fillStyle=`rgba(171,209,224,${s.a})`;ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.r,0,TAU);ctx.fill();}}
   // Wide halo, wirework and illuminated edge: an intentionally stylized instrument view.
   let halo=ctx.createRadialGradient(this.cx,this.cy,R*.88,this.cx,this.cy,R*1.36);halo.addColorStop(0,'#58c2e300');halo.addColorStop(.33,'#55b7d419');halo.addColorStop(.65,'#30709009');halo.addColorStop(1,'#204c7000');ctx.fillStyle=halo;ctx.fillRect(this.cx-R*1.4,this.cy-R*1.4,R*2.8,R*2.8);
   ctx.save();ctx.translate(this.cx,this.cy);ctx.rotate(-.25);ctx.strokeStyle='#77aabc28';ctx.lineWidth=.8;ctx.beginPath();ctx.ellipse(0,0,R*1.18,R*.35,0,0,TAU);ctx.stroke();ctx.rotate(.54);ctx.beginPath();ctx.ellipse(0,0,R*1.11,R*.41,0,0,TAU);ctx.stroke();ctx.restore();
-  const sphere=ctx.createRadialGradient(this.cx-R*.3,this.cy-R*.3,R*.12,this.cx,this.cy,R);sphere.addColorStop(0,'#143a4ce8');sphere.addColorStop(.6,'#0b2534ee');sphere.addColorStop(.92,'#091f2de8');sphere.addColorStop(1,'#1b4859f0');ctx.fillStyle=sphere;ctx.beginPath();ctx.arc(this.cx,this.cy,R,0,TAU);ctx.fill();
+  const sphere=ctx.createRadialGradient(this.cx-R*.3,this.cy-R*.3,R*.12,this.cx,this.cy,R);sphere.addColorStop(0,colors?.inner||'#143a4ce8');sphere.addColorStop(.6,colors?.middle||'#0b2534ee');sphere.addColorStop(.92,'#091f2de8');sphere.addColorStop(1,colors?.edge||'#1b4859f0');ctx.fillStyle=sphere;ctx.beginPath();ctx.arc(this.cx,this.cy,R,0,TAU);ctx.fill();
   if(this.options.grid){for(const line of this.grids)this.line(line,'#41607120',.65,true);for(const line of this.grids)this.line(line,'#53819536',.7);}
-  for(const line of this.coasts)this.line(line,'#72c5d6a0',.72);
+  for(const line of this.coasts)this.line(line,colors?.coast||'#72c5d6a0',.72);
   for(const v of this.dots){const p=this.project(v);if(p.z<0)continue;ctx.fillStyle=p.z>.65?'#74bac79a':p.z>.3?'#559caf80':'#356c8060';ctx.beginPath();ctx.arc(p.x,p.y,.65+Math.max(0,p.z)*.35,0,TAU);ctx.fill();}
   if(this.options.atmosphere){ctx.save();ctx.beginPath();ctx.arc(this.cx,this.cy,R,0,TAU);ctx.clip();for(let n=0;n<5;n++){ctx.strokeStyle='#c0e7ed0a';ctx.lineWidth=R*.04;ctx.beginPath();for(let k=0;k<100;k++){const x=this.cx-R+k*R/50,y=this.cy+R*(n*.3-.65)+Math.sin(k*.06+n+(this.reduced?0:t*.00003))*R*.15;if(k===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}ctx.restore();}
   if(this.environmentRenderer){this.ctx.save();try{this.environmentRenderer(this,t);}finally{this.ctx.restore();}}
-  ctx.strokeStyle='#8bdded9a';ctx.lineWidth=1.1;ctx.beginPath();ctx.arc(this.cx,this.cy,R,0,TAU);ctx.stroke();ctx.strokeStyle='#599aad20';ctx.beginPath();ctx.arc(this.cx,this.cy,R*1.022,0,TAU);ctx.stroke();
+  ctx.strokeStyle=colors?.rim||'#8bdded9a';ctx.lineWidth=1.1;ctx.beginPath();ctx.arc(this.cx,this.cy,R,0,TAU);ctx.stroke();ctx.strokeStyle='#599aad20';ctx.beginPath();ctx.arc(this.cx,this.cy,R*1.022,0,TAU);ctx.stroke();
   if(this.options.concept){ctx.save();ctx.setLineDash([3,6]);ctx.strokeStyle='#e9c57255';for(let n=0;n<4;n++){ctx.beginPath();ctx.ellipse(this.cx,this.cy,R*(.4+n*.25),R*1.3,-.2,0,TAU);ctx.stroke();}ctx.setLineDash([]);ctx.fillStyle='#e9c572';ctx.font='10px "Segoe UI", Arial, sans-serif';ctx.textAlign='center';ctx.fillText('CONCEPT DIAGRAM · NOT A MAGNETIC FIELD MODEL',this.cx,this.cy+R*1.34);ctx.restore();}
   this.hits=[];let front=this.sites.map(s=>({...s,p:this.project(s.v)})).filter(s=>s.p.z>.07).sort((a,b)=>a.p.z-b.p.z);
   for(const s of front){const p=s.p,active=s.id===this.selected,col=AtlasCore.COLORS[s.mystery]||'#b5c7d1',r=active?6.0:4.0;this.hits.push(s);ctx.save();ctx.translate(p.x,p.y);ctx.shadowBlur=active?17:8;ctx.shadowColor=col;ctx.fillStyle=col;ctx.beginPath();if(s.category==='lidar'){ctx.moveTo(0,-r*1.4);ctx.lineTo(r*1.4,0);ctx.lineTo(0,r*1.4);ctx.lineTo(-r*1.4,0);ctx.closePath();}else ctx.arc(0,0,r,0,TAU);ctx.fill();ctx.shadowBlur=0;

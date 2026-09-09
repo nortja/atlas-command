@@ -47,7 +47,7 @@ if (-not $MakeAppx) { throw 'MakeAppx.exe is missing. Install the Windows SDK on
 $null = Get-Command node -ErrorAction Stop
 Push-Location $Root
 try {
-    & node --test 'tests/core.test.cjs' 'tests/source-checks.test.cjs' 'tests/store-identity.test.cjs' 'tests/workspace-layout.test.cjs' 'tests/lidar.test.cjs' 'tests/weather-units.test.cjs' 'tests/live-weather.test.cjs'
+    & node --test 'tests/core.test.cjs' 'tests/source-checks.test.cjs' 'tests/store-identity.test.cjs' 'tests/workspace-layout.test.cjs' 'tests/lidar.test.cjs' 'tests/weather-units.test.cjs' 'tests/live-weather.test.cjs' 'tests/release-tools.test.cjs'
     if ($LASTEXITCODE -ne 0) { throw 'JavaScript or source checks failed.' }
 } finally { Pop-Location }
 
@@ -58,7 +58,7 @@ $null = New-Item -ItemType Directory -Force -Path $Stage,$Dist
 # Runtime content is an explicit allow-list. No compiler, batch file, C# source,
 # private workspace, personal photos, signing keys or build scripts are shipped.
 $RuntimeFiles = @(
-    'index.html','src/app.js','src/core.js','src/globe.js','src/styles.css','src/workspace-layout.js','src/weather-units.js','src/live-weather.js','src/live-weather.css','src/lidar.js','src/next-ui.css',
+    'index.html','src/app.js','src/core.js','src/globe.js','src/styles.css','src/workspace-layout.js','src/weather-units.js','src/live-weather.js','src/live-weather.css','src/data-refresh.js','src/cameras.js','src/cameras.css','src/ui-directions.js','src/ui-directions.css','src/lidar.js','src/next-ui.css',
     'assets/world.js','assets/icon.svg','assets/COUNTRYINFO-LICENSE.txt','data/seed.js'
 )
 foreach ($Relative in $RuntimeFiles) {
