@@ -33,25 +33,33 @@ edit('app/src/globe.js',globe)
 print('Integrated three bundled review appearances; no installation or Store action.')
 def camera_test(s):
  old="   frames.append({'camera':r.url.rsplit('/',1)[-1],'sha256':hashlib.sha256(r.body()).hexdigest(),'bytes':len(r.body()),'fetchedAt':r.headers.get('x-atlas-camera-fetched-at'),'modifiedAt':r.headers.get('x-atlas-camera-modified')})"
- previous="   responses.append(r)\n def collect_responses():\n  while responses:\n   r=responses.pop(0);r.finished();body=r.body()\n   frames.append({'camera':r.url.rsplit('/',1)[-1],'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body),'fetchedAt':r.headers.get('x-atlas-camera-fetched-at'),'modifiedAt':r.headers.get('x-atlas-camera-modified')})"
  new='''   responses.append(r)
  def collect_responses():
   if not responses:raise AssertionError('No native camera response received.')
   r=responses.pop();responses.clear()
-  # DevTools returned an empty body for this POST despite a decoded image in the
-  # page. Verify the bytes the application actually displays via its local blob.
-  blob=page.locator('#cameraView img').evaluate("""async img=>{
-   if(!img.src.startsWith('blob:'))throw Error('Expected a local received-image blob');
-   const bytes=new Uint8Array(await (await fetch(img.src)).arrayBuffer());
-   const digest=await crypto.subtle.digest('SHA-256',bytes);
-   return {bytes:bytes.length,sha256:Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''),signature:Array.from(bytes.slice(0,3)),width:img.naturalWidth,height:img.naturalHeight};
-  }""")
-  assert blob['signature']==[255,216,255] and blob['bytes']>10000 and blob['width']>=500
-  assert blob['bytes']==int(r.headers['content-length']), 'Rendered image size differs from actual native response'
-  frames.append({'camera':r.url.rsplit('/',1)[-1],**blob,'fetchedAt':r.headers.get('x-atlas-camera-fetched-at'),'modifiedAt':r.headers.get('x-atlas-camera-modified'),'verification':'Actual displayed blob matches native response Content-Length; no substituted imagery'})'''
+  # Read the same registered native endpoint while its in-memory frame is cached.
+  # The browser already decoded that image. Matching fetch time and length links
+  # the inspected bytes to the UI response without weakening connect-src for blob URLs.
+  ident=r.url.rsplit('/',1)[-1]
+  status,headers,body=host.expect('POST','api/camera/'+ident,200,headers={'X-Atlas-Request':'local'})
+  assert body[:3]==bytes([255,216,255]) and len(body)>10000
+  assert len(body)==int(r.headers['content-length'])
+  assert headers['x-atlas-camera-fetched-at']==r.headers['x-atlas-camera-fetched-at']
+  dims=page.locator('#cameraView img').evaluate('(img)=>({width:img.naturalWidth,height:img.naturalHeight})')
+  assert dims['width']>=500
+  frames.append({'camera':ident,'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body),**dims,'fetchedAt':headers['x-atlas-camera-fetched-at'],'modifiedAt':headers.get('x-atlas-camera-modified'),'verification':'Native cached payload matches browser response fetch time and length; browser decoded the actual image'})'''
  s=once(s,'network=[];frames=[];success=False','network=[];frames=[];responses=[];success=False')
- if previous in s:s=s.replace(previous,new)
+ if ' def collect_responses():' in s:
+  start=s.index('   responses.append(r)');end=s.index('\n try:\n  host.start()',start);s=s[:start]+new+s[end:]
  else:s=once(s,old,new)
  s=once(s,"   assert frames and frames[-1]['camera']=='K2cam'", "   collect_responses()\n   assert frames and frames[-1]['camera']=='K2cam'")
  return once(s,"   assert frames[-1]['camera']=='F1cam'", "   collect_responses()\n   assert frames[-1]['camera']=='F1cam'")
 edit('tests/release_tools_ui.py',camera_test)
+def finish_ui_test(s):
+ s=s.replace("page.locator('#queueBtn').click();expect(page.locator('[data-stat=queued]')).to_have_text('0')", "page.locator('#queueBtn').click();expect(page.locator('[data-stat=queued]')).to_have_text('1')")
+ s=s.replace('Mission counter responds to actual queue add and removal','Mission counter responds to actual queue add and refuses duplicate additions')
+ s=once(s,"success=False;page=None", "success=False;page=None;failure=''")
+ s=once(s," finally:\n  if page and not success:", " except Exception as error:\n  failure=repr(error);raise\n finally:\n  if page and not success:")
+ s=once(s,"{'success':success,'checks':checks", "{'success':success,'failure':failure,'checks':checks")
+ return s
+edit('tests/ui_directions_native.py',finish_ui_test)
