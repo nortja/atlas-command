@@ -1,0 +1,113 @@
+# Manual validation only. Keep the account Actions budget at $0 with Stop usage enabled.
+# This workflow never installs the app, creates certificates, changes endpoint policy,
+# uploads executables, submits to the Store, or enables paid services.
+name: Windows compile check
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_check:
+        description: 'Run one compile check using included Actions usage; keep the $0 spending block.'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: atlas-windows-validation
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: ${{ inputs.confirm_check && github.event.repository.private }}
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Check out source without retaining credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6, resolved before configuration
+        with:
+          persist-credentials: false
+      - name: Check that application source has been uploaded at repository root
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $required = @(
+            'app/index.html', 'app/src/app.js', 'app/src/core.js', 'app/src/globe.js',
+            'app/src/styles.css', 'app/assets/world.js', 'app/data/seed.js',
+            'native/AtlasHost.cs', 'native/AssemblyInfo.cs', 'native/WindowsApp.manifest',
+            'native/AtlasCommand.ico', 'build/Build-Store.ps1',
+            'tests/core.test.cjs', 'tests/source-checks.test.cjs',
+            'tests/store-identity.test.cjs', 'packaging/store-config.json'
+          )
+          $missing = @($required | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
+          if ($missing.Count) {
+            throw ('Application source is not fully uploaded. Upload the CONTENTS of the extracted Atlas-Command-Store-Configured folder at repository root. Missing: ' + ($missing -join ', '))
+          }
+          $config = Get-Content -LiteralPath 'packaging/store-config.json' -Raw | ConvertFrom-Json
+          if ($config.identityName -cne 'AtlasCommandCenter.AtlasCommand' -or
+              $config.identityPublisher -cne 'CN=C67667CB-8089-40FE-AA2B-2AC007243585' -or
+              $config.publisherDisplayName -cne 'Atlas Command Center') {
+            throw 'Store identity differs from the values supplied by the owner.'
+          }
+          if ($config.distributionIntent -cne 'private' -or $config.priceIntent -cne 'free' -or $null -ne $config.makePublicOn) {
+            throw 'Expected a free, private release with no public release date.'
+          }
+      - name: Run application logic and source checks
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          node --test tests/core.test.cjs tests/source-checks.test.cjs tests/store-identity.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Application checks failed.' }
+      - name: Parse the Store build recipe without running it
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $PWD 'build/Build-Store.ps1'), [ref]$tokens, [ref]$errors)
+          if ($errors.Count) { $errors | Format-List; throw 'Store build script has syntax errors.' }
+      - name: Compile native host on this Windows runner only
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $config = Get-Content -LiteralPath 'packaging/store-config.json' -Raw | ConvertFrom-Json
+          if ($config.version -notmatch '^\d+\.\d+\.\d+\.0$') { throw 'Invalid Store version.' }
+          $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          if (-not (Test-Path -LiteralPath $compiler)) { throw 'Build runner compiler is unavailable.' }
+          $outputDir = Join-Path $env:RUNNER_TEMP ('atlas-compile-' + [guid]::NewGuid().ToString('N'))
+          $null = New-Item -ItemType Directory -Path $outputDir
+          $versionSource = Join-Path $outputDir 'VersionInfo.cs'
+          $versionText = 'using System.Reflection;' + [Environment]::NewLine +
+            '[assembly: AssemblyVersion("' + $config.version + '")]' + [Environment]::NewLine +
+            '[assembly: AssemblyFileVersion("' + $config.version + '")]'
+          [IO.File]::WriteAllText($versionSource, $versionText, [Text.UTF8Encoding]::new($false))
+          $exe = Join-Path $outputDir 'AtlasCommand.exe'
+          $arguments = @(
+            '/nologo', '/codepage:65001', '/target:winexe', '/platform:x64', '/optimize+', '/warn:4', '/warnaserror+',
+            ('/out:' + $exe),
+            ('/win32manifest:' + (Join-Path $PWD 'native/WindowsApp.manifest')),
+            ('/win32icon:' + (Join-Path $PWD 'native/AtlasCommand.ico')),
+            '/reference:System.dll,System.Core.dll,System.Web.Extensions.dll,System.Windows.Forms.dll',
+            (Join-Path $PWD 'native/AtlasHost.cs'),
+            (Join-Path $PWD 'native/AssemblyInfo.cs'), $versionSource
+          )
+          & $compiler @arguments
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $exe)) { throw 'Native compilation failed.' }
+          $assembly = [Reflection.AssemblyName]::GetAssemblyName($exe)
+          if ($assembly.Version.ToString() -ne $config.version) { throw 'Native version mismatch.' }
+          $hash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $lines = @(
+            '## Atlas Command: Windows compilation passed',
+            '',
+            ('Source commit: ' + $env:GITHUB_SHA),
+            ('Assembly version: ' + $assembly.Version.ToString()),
+            ('Build operating system: ' + [Environment]::OSVersion.Version.ToString()),
+            ('Executable SHA-256: ' + $hash),
+            '',
+            'Compilation and source checks only. The application was NOT installed or launched.',
+            'Windows runtime/compatibility testing, SentinelOne review, MSIX packaging, and Store certification/signing are still pending.',
+            'The executable is not published as an artifact and is not a replacement installer.',
+            'No personal atlas data, signing keys, Store credentials, or paid services are used.'
+          )
+          $lines | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          Remove-Item -LiteralPath $outputDir -Recurse -Force
+# No push or scheduled triggers, dependency caches, release uploads, or recurring jobs.
