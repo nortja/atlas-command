@@ -1,50 +1,74 @@
 # Optional My Field Camera module
 
 Owner: Jaison Norton. Updated 2026-09-09.
-Original request: 'I would also like to add a field camera if needed.'
-Status: included in consolidated release planning; NOT connected or implemented as a live field-camera adapter. The public USGS snapshot adapter does not connect to a user's hardware.
+Status: consolidated release design; NOT implemented as a private IP/field-camera player. The existing public USGS snapshot adapter does not connect to the owner's hardware.
 
 ## Owner direction
 
-Asked whether he would primarily use a camera at the site or leave it remotely and watch from home, the owner answered: 'Probably both'.
+Original request: 'I would also like to add a field camera if needed.'
+Usage: 'Probably both' on site and watching a remotely deployed camera from home.
+Latest clarification: 'I do own a camera but want to be able to connect any if I want', followed by 'via an ip address'.
 
-Plan for both workflows under one optional My Field Camera module, with separate On Site and Remote Watch connection profiles. This is a tentative usage preference, not selection of hardware, authorization to activate a camera, approval to purchase a subscription, or confirmation that one camera will support every workflow.
+Design for manually adding authorized cameras by IP address, without a single-brand restriction. Do not require a model-specific catalog entry for every supported standards-based camera. Do not interpret this as universal camera compatibility, permission to connect now, or authorization to purchase equipment or services. Hardware model remains useful for the first actual compatibility test, not as an architectural restriction.
 
-## Options to consider before feature freeze
+## Add by IP workflow — planned, not delivered
 
-1. On Site: supported built-in or USB camera preview with explicit Windows/browser permission, deliberate capture actions and local attachment saves. A phone or action-camera connection is an additional adapter option, not presumed compatible. Camera and microphone activation are separate; microphone off by default. Actual camera compatibility and permission-denied paths require physical-device testing.
-2. Remote Watch: explicit pairing of the owner's known device/provider, authenticated supported transport and real status. Requires the particular camera's supported live-view/API capabilities and working connectivity at both ends. Do not assume every cellular/trail camera supports continuous live video. Do not promise operation without signal or free cellular/satellite transport. Review actual power, transport, data costs and provider restrictions before selecting an adapter.
-3. Offline expedition media: import original photos/clips from camera/SD card when available, attach them to a mission/site and preserve provenance. Offline capture/recording belongs to the device unless a local capture implementation is provided; it is not live remote viewing. On-device recordings can be imported later; automated synchronization is not implemented or promised.
+My Field Camera > Add camera > IP address/hostname > Test connection > Choose stream > Save profile.
 
-## Proposed common interface
+Simple fields: friendly name, IP address or hostname, connection mode (On Site / Remote Watch), connection method, username and a separately entered masked password. Advanced fields expose ONVIF service port/path, RTSP port/path, channel/stream profile, supported transport/codec options and snapshot endpoint. Avoid implying that web UI, ONVIF service and RTSP streaming share one port.
 
-Use the refined B — Expedition visual language: warm charcoal, restrained brass, editorial camera/site headings, modern controls and aligned numerical readings. One optional Field Camera panel has On Site and Remote Watch tabs, a prominent preview, a compact control bar and a camera/source selector. Public Cameras remains separately identified from private owner devices.
+The IP address identifies the endpoint; it is not necessarily the full stream address. Support a manually supplied stream path/URL when the camera cannot supply it through a supported ONVIF media service. Do not guess a brand's path, bypass authentication, or probe unrelated addresses.
 
-Show friendly camera name, linked site/mission, last-contact time, capture time when supplied, and an explicit Live video / Snapshot / Recording / Paused / Offline state. Connection, recording, and data freshness are separate indicators. Preview and microphone are off until deliberate action. Recording controls must remain unavailable until the selected adapter has a tested recording implementation.
+Test connection must be a deliberate action to the entered endpoint. Distinguish address/route failure, authentication failure, unsupported protocol/codec, certificate validation failure, and successful decoded video or snapshot. A response to ping, HTTP or authentication alone is not proof of live playback. Show a preview before linking to a site/mission. Reconnecting a saved camera is a separate deliberate action; saving a profile does not activate it on future app starts.
 
-Battery, signal, local storage, temperature, solar power or PTZ appear only when the device actually reports/supports them. Missing telemetry is 'not reported', never invented. Device connection or power failure must not be inferred merely from a stale picture.
+## Standards-based compatibility targets
 
-Manual snapshot, clip capture or import should explicitly identify the destination site before saving. A selected site's coordinates must not be written as measured camera GPS. Preserve original capture metadata separately from import time and user-entered location. Keep field-camera locations, media and pairing credentials private by default.
+- ONVIF media capability/profile queries for the single entered device: retrieve supported stream/snapshot URIs where offered. Target suitable Profile T operations and evaluate needed legacy compatibility. This is an implementation target, not a claim that Atlas is ONVIF-conformant or certified.
+- Direct RTSP video input with H.264 as an initial decoder target. Qualify transports, authentication and codecs explicitly. H.265/other codecs, RTSPS/SRTP and vendor-specific behavior need their own implementation and tests; do not mark them supported merely because an address is accepted.
+- Explicit HTTP(S) JPEG snapshot endpoints and MJPEG streams where implemented and verified. Keep periodically refreshed JPEG stills distinct from continuous video.
+- PTZ, audio, device telemetry, recording and retrieval of device-side recordings only when both camera and Atlas adapter support and have tested them. Controls for absent functions stay unavailable with a reason.
 
-Remote Watch is a proposed user-opened viewing session. Do not imply this desktop app watches or records while closed or while the computer sleeps. Background services, automatic overnight recording and device-side event alerts require separate implementation and testing. Refresh of snapshots is not continuous video.
+Broad compatibility means compatible interfaces, codecs and authentication across brands, not every camera with an IP address. Cameras limited to proprietary provider services may need a supported provider integration and may not work by IP alone. No brand or subscription has been selected.
 
-## Security and recording rules
+The native media/transport implementation is still to be chosen and reviewed. An RTSP address must not be handed to the existing browser UI as if that alone supplies a working decoder. Do not download executable adapters or arbitrary player code as ordinary data updates. Test and bundle required components through the normal application release path.
 
-- User-owned or explicitly authorized devices only. No automatic internet/LAN camera scanning, credential guessing, covert camera activation, or access to other people's feeds.
-- No usernames, passwords, stream tokens or pairing secrets in GitHub, logs, screenshots, atlas exports or ordinary site notes. Choose a proper local credential store during the transport implementation.
-- Camera/video connection and microphone/audio consent are separate. Preview off until a user action. Visible recording indicator, explicit start/stop, and a tested disconnect behavior are required before recording ships.
-- Do not expose a raw camera feed to the public internet or change firewall/endpoint policies as a setup shortcut. Remote access must use a supported authenticated connection.
-- Public provider viewing rights do not permit arbitrary recording/rebroadcasting. Private field recordings likewise need lawful placement and consent where appropriate.
-- Disconnection, full storage, lost power and incomplete transfers must be visible. Do not fill gaps with simulated footage or mark a cached image LIVE.
+## On Site, Remote Watch and offline media
 
-## Next question
+On Site: manually connect to a reachable camera on the user's local network or authorized camera network. Built-in/USB and phone/action-camera integrations remain separate optional adapters, not presumed supported by the IP workflow. Working local camera networking can be independent of internet service; the selected connection still needs to be reachable.
 
-Does the owner already have a camera to connect, and if so what make/model, or are we selecting the first supported device from scratch? Ask this as one question. No hardware purchase or subscription has been selected. Do not request camera credentials in chat.
+Remote Watch: use the authorized remote network through a properly configured authenticated VPN/private route or a specifically supported secure provider integration. A private LAN IP is not automatically reachable from another internet location. Do not instruct the owner to publish an unauthenticated stream, open camera ports to the internet, turn on UPnP mapping, or weaken endpoint/firewall protections. A vendor's remote-view app does not imply it exposes an API or a route usable by Atlas. Connectivity, power, any provider costs, and exact remote transport must be verified separately.
+
+Offline media: import originals from a camera/memory card when available. Preserve capture metadata separately from import time. Device-side recording and later file import are not live remote viewing or implemented automatic synchronization.
+
+Remote Watch is a user-opened viewing session. Do not claim the desktop app records while closed or asleep. Background recording, device event alerts and overnight jobs require separate implementation and acceptance.
+
+## Interface and privacy
+
+Retain B — Expedition: warm charcoal, brass accents, editorial camera/site headings, modern controls and aligned readings. Use On Site / Remote Watch tabs, a prominent preview, optional saved-camera selector and compact controls. Public Cameras and My Field Camera remain separately identified.
+
+Show friendly name, linked site/mission, last contact, capture time if supplied, and explicit Live video / Snapshot / Recording / Paused / Unavailable status. Connection, recording and frame freshness are separate indicators. Do not infer power or network failure solely from an old image. Never show a cached image as LIVE.
+
+Battery, signal, storage, solar input and other telemetry appear only when actually reported. Otherwise show 'Not reported'. Before saving media, confirm the destination site. A linked site's coordinates must not be written as measured camera GPS. Keep device addresses, locations and media private by default.
+
+Credentials must stay separate from research records and ordinary settings/export files. Evaluate Windows-protected local credential storage; do not claim it exists before implementation. Never place credentials or tokenized URLs in GitHub, logs, previews, command-line process arguments, shared exports or chat. Redact endpoint secrets from diagnostics. No credentials are requested from the owner at this stage.
+
+Camera activation, camera audio, microphone/talkback and recording require separate deliberate controls. Audio and microphone off by default; a visible recording indicator and tested stop/disconnect are required before recording ships. No covert capture or internet/LAN scanning. Use only owned or expressly authorized devices and respect placement/recording rights.
+
+Do not turn the fixed-source public camera adapter into an unrestricted URL proxy. A private-camera transport must authorize the selected endpoint, validate any device-returned URL and redirect, bound responses/timeouts/retries, guard against unrelated local services or metadata endpoints, and not forward credentials to a new host without verification. Do not disable TLS certificate checks globally. Address-family and private-route handling need tests rather than blanket blocking of all legitimate local camera addresses.
 
 ## Release gates
 
-Select hardware class/transport; verify provider/device access and cost; implement and test the chosen adapter, consent, local media persistence, credential handling and interruption cases on the authorized personal Windows computer. Update the complete privacy policy, Store declarations, ratings and listing to match the actual delivered feature. Each supported workflow needs its own acceptance checks; one successful adapter test is not universal camera compatibility.
+Implement the saved-profile UI, protected credential handling and narrowly scoped transport. Qualify supported protocols/codecs, consent, image/video decoding, interruptions, local media saves, wrong-password behavior, unsupported devices and revoked credentials. Test a real supported device on the authorized personal Windows computer, with a separate remote-route test. One successful camera is not proof of compatibility with all models.
 
-This update changes scope documentation only. No runtime code, installer, Store submission, publishing hold, billing, camera permission or microphone permission has changed. No tests were rerun for this documentation-only update. Do not describe this scope as delivered field-camera support.
+Update privacy disclosures, Store declarations, ratings and feature claims to exactly match delivered functions. No claims of full ONVIF conformance, remote recording or universal IP-camera support without evidence. The existing certified package remains separate from this design.
 
-Microsoft camera/Edge privacy reference: https://support.microsoft.com/en-us/windows/privacy/windows-camera-microphone-and-privacy
+This commit updates scope documentation only. No runtime code, decoder, installer, Store submission, publishing hold, billing, network settings or camera/microphone permissions have changed. No tests were rerun. Do not describe the IP-camera connection as working yet.
+
+## Primary technical references reviewed 2026-09-09
+
+- ONVIF profiles and cross-vendor feature boundaries: https://www.onvif.org/profiles/
+- Profile T scope and conditional features: https://www.onvif.org/profiles/profile-t/
+- ONVIF media operations including GetProfiles, GetStreamUri and GetSnapshotUri: https://www.onvif.org/onvif/ver20/util/operationIndex.html
+- Axis RTSP addressing, credentials and transport examples: https://developer.axis.com/video-streaming-and-recording/video-streaming/how-to-guides/rtsp/
+- Axis remote access guidance discouraging port mapping: https://help.axis.com/en-us/axis-camera-station-pro-integrator-guide
+- Windows camera/microphone privacy: https://support.microsoft.com/en-us/windows/privacy/windows-camera-microphone-and-privacy
