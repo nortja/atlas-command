@@ -11,5 +11,9 @@ if '04-Laptop-Workspace.png' not in s:
  s=s.replace("page.wait_for_timeout(350);page.screenshot(path=str(OUT/'01-Next-Observatory.png'))", "page.wait_for_timeout(350);page.screenshot(path=str(OUT/'01-Next-Observatory.png'))\n   page.set_viewport_size({'width':1366,'height':768});page.wait_for_timeout(250);page.screenshot(path=str(OUT/'04-Laptop-Workspace.png'))\n   page.set_viewport_size({'width':2560,'height':1440});page.wait_for_timeout(250)")
  s=s.replace("page.locator('#lidarDeskBtn').click();page.locator('[data-show=\"lidar-1\"]').click();assert", "page.locator('#ratingFilter').select_option('1')\n   page.locator('#lidarDeskBtn').click();page.locator('[data-show=\"lidar-1\"]').click();assert")
  s=s.replace("page.locator('[data-tab=\"research\"]').click();page.locator('#alignmentBtn').click()", "assert page.locator('#ratingFilter').input_value()=='' and page.locator('.site-item').count()==4\n   page.locator('[data-tab=\"research\"]').click();page.locator('#alignmentBtn').click()")
+# Use locator conditions rather than a string-evaluated polling function. The app's CSP remains unchanged.
+s=s.replace('from playwright.sync_api import sync_playwright\n', 'from playwright.sync_api import sync_playwright, expect\n')
+s=s.replace('page.wait_for_function(\'!document.querySelector("#workspaceChooser").open\')', 'page.locator("#workspaceChooser").wait_for(state="hidden")')
+s=s.replace('page.wait_for_function(\'document.querySelector("#layoutStatus").textContent.startsWith("Not saved:")\')', 'expect(page.locator("#layoutStatus")).to_contain_text("Not saved:")')
 p.write_text(s,encoding='utf-8',newline='\n')
 print('Applied reviewed filter navigation, test coverage and screenshot refinements.')
