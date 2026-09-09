@@ -1,0 +1,97 @@
+# Owner-authorized development work only; existing $0 Actions spending block stays unchanged.
+# Runs only with the explicit marker on this private development branch. No Store or install actions.
+name: Test next workspace and LiDAR build
+on:
+  push:
+    branches: ['develop/next-workspaces']
+    paths: ['.github/workflows/next-ui-validation.yml', 'build/integrate_next.py', 'tests/next_ui_test.py', 'app/src/workspace-layout.js', 'app/src/lidar.js', 'app/src/next-ui.css', 'tests/lidar.test.cjs', 'tests/workspace-layout.test.cjs']
+permissions:
+  contents: write
+concurrency:
+  group: atlas-next-ui-validation
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: ${{ github.event.repository.private && github.repository == 'nortja/atlas-command' && contains(github.event.head_commit.message, '[atlas-next-qa]') }}
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Materialize reviewed source changes on the development worktree
+        shell: pwsh
+        run: |
+          python build/integrate_next.py
+          if ($LASTEXITCODE -ne 0) { throw 'Source baseline mismatch or integration failed.' }
+          node --test tests/core.test.cjs tests/source-checks.test.cjs tests/store-identity.test.cjs tests/workspace-layout.test.cjs tests/lidar.test.cjs
+          if ($LASTEXITCODE -ne 0) { throw 'Code checks failed.' }
+          python -m py_compile tests/next_ui_test.py
+          if ($LASTEXITCODE -ne 0) { throw 'UI test syntax check failed.' }
+      - name: Compile developer executable into disposable runner storage
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $config = Get-Content packaging/store-config.json -Raw | ConvertFrom-Json
+          if ($config.version -ne '1.1.0.0') { throw 'Unexpected development version.' }
+          $stage = Join-Path $env:RUNNER_TEMP ('atlas-next-' + [guid]::NewGuid().ToString('N'))
+          $null = New-Item -ItemType Directory -Path $stage
+          Copy-Item -Path 'app/*' -Destination $stage -Recurse
+          Copy-Item native/AtlasCommand.exe.config $stage
+          $vs = Join-Path $stage 'VersionInfo.cs'
+          [IO.File]::WriteAllText($vs, 'using System.Reflection; [assembly: AssemblyVersion("1.1.0.0")] [assembly: AssemblyFileVersion("1.1.0.0")]', [Text.UTF8Encoding]::new($false))
+          $exe = Join-Path $stage 'AtlasCommand.exe'
+          $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          & $compiler /nologo /codepage:65001 /target:winexe /platform:x64 /optimize+ /warn:4 /warnaserror+ "/out:$exe" /win32manifest:native/WindowsApp.manifest /win32icon:native/AtlasCommand.ico /reference:System.dll,System.Core.dll,System.Web.Extensions.dll,System.Windows.Forms.dll native/AtlasHost.cs native/AssemblyInfo.cs $vs
+          if ($LASTEXITCODE -ne 0) { throw 'Native compilation failed.' }
+          ('ATLAS_SMOKE_EXE=' + $exe) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          ('ATLAS_SMOKE_STAGE=' + $stage) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Run actual native-host UI, save/reload and screen-size tests
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir playwright==1.57.0
+          if ($LASTEXITCODE -ne 0) { throw 'Test driver setup failed.' }
+          python tests/next_ui_test.py
+          if ($LASTEXITCODE -ne 0) { throw 'Native UI checks failed.' }
+      - name: Commit tested generated source to this development branch only
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:GITHUB_REF -cne 'refs/heads/develop/next-workspaces') { throw 'Wrong source branch.' }
+          $paths = @('app/index.html','app/workspace-preview.html','app/src/app.js','native/AtlasHost.cs','build/Build-Store.ps1','packaging/store-config.json')
+          & git add -- @paths
+          if ($LASTEXITCODE -ne 0) { throw 'Staging failed.' }
+          $unexpected = @(git diff --cached --name-only | Where-Object { $_ -notin $paths })
+          if ($unexpected.Count) { throw 'Unexpected staged source path.' }
+          & git diff --cached --quiet
+          if ($LASTEXITCODE -eq 1) {
+            git -c user.name='Atlas development automation' -c user.email='atlas-dev@users.noreply.github.com' commit -m 'Integrate tested workspace API, layouts and LiDAR desk in development source only'
+            if ($LASTEXITCODE -ne 0) { throw 'Development commit failed.' }
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('x-access-token:' + $env:GH_TOKEN))
+            Write-Output ('::add-mask::' + $encoded)
+            & git -c ('http.https://github.com/.extraheader=AUTHORIZATION: basic ' + $encoded) push origin HEAD:refs/heads/develop/next-workspaces
+            if ($LASTEXITCODE -ne 0) { throw 'Development branch moved or write permission unavailable; no force push was used.' }
+          }
+          $report = Get-Content next-test-output/NEXT-TEST-RESULTS.json -Raw | ConvertFrom-Json
+          $report | Add-Member -NotePropertyName materializedCommit -NotePropertyValue ((git rev-parse HEAD).Trim())
+          $report | ConvertTo-Json -Depth 8 | Set-Content next-test-output/NEXT-TEST-RESULTS.json -Encoding utf8
+      - name: Retain preview screenshots and test report only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: atlas-next-workspace-preview
+          path: |
+            next-test-output/*.png
+            next-test-output/NEXT-TEST-RESULTS.json
+          retention-days: 3
+          if-no-files-found: warn
+      - name: Clean temporary executable
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:ATLAS_SMOKE_STAGE -and (Test-Path -LiteralPath $env:ATLAS_SMOKE_STAGE)) {
+            Remove-Item -LiteralPath $env:ATLAS_SMOKE_STAGE -Recurse -Force
+          }
+# No installer artifact, certificates, endpoint exceptions, main-branch push or Store submission.
