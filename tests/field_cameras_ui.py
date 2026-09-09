@@ -13,6 +13,7 @@ def main():
  appdata=Path(NativeSmoke.powershell('[Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)'))/'AtlasCommand'
  if appdata.exists():raise RuntimeError('Refusing existing workspace')
  host=NativeSmoke(exe,appdata,temp);OUT.mkdir(exist_ok=True);checks=[];errors=[];external=[];success=False;failure=''
+ invariant='JSON.stringify([AtlasWorkspace.sites.list(),AtlasWorkspace.layouts.read("desktop"),AtlasWorkspace.weather.getUnits(),AtlasWorkspace.cameras.read(),AtlasWorkspace.liveEarth.read()])'
  def passed(s):checks.append(s);print('PASS: '+s,flush=True)
  try:
   host.start()
@@ -21,7 +22,7 @@ def main():
    page.on('pageerror',lambda e:errors.append(str(e)));page.on('request',lambda r:external.append(r.url) if not r.url.startswith(('http://127.0.0.1:','blob:','data:')) else None)
    page.goto(host.url);page.locator('#fieldCameraOpen').wait_for(state='attached');page.locator('#boot').wait_for(state='detached')
    page.locator('#appearanceBtn').click();page.locator('[data-appearance=expedition]').click();expect(page.locator('#appearanceSaveStatus')).to_contain_text('Saved locally');page.locator('#appearanceClose').click()
-   before=page.evaluate('JSON.stringify([AtlasWorkspace.sites.list(),AtlasWorkspace.layouts.read("desktop"),AtlasWorkspace.weather.read(),AtlasWorkspace.cameras.read(),AtlasWorkspace.liveEarth.read()])')
+   before=page.evaluate(invariant)
    def open_desk():page.locator('#cameraDeskBtn').click();page.locator('#fieldCameraOpen').click();expect(page.locator('#fieldCameraDesk')).to_be_visible()
    def save():page.locator('#fieldSave').click();expect(page.locator('#fieldMessage')).to_contain_text('Saved locally.')
    open_desk();expect(page.locator('#fieldCount')).to_have_text('0 saved profiles');assert not external
@@ -39,10 +40,9 @@ def main():
    passed('Name, locality, description, modes, facing, tags and setup details persist to native storage without credentials or invented GPS')
    page.locator('#fieldEdit').click();page.locator('#fieldLocationDetails summary').click();page.locator('#fc-lat').fill('0');page.locator('#fieldSave').click();expect(page.locator('#fieldFormError')).to_contain_text('both latitude');page.locator('#fc-lon').fill('0');page.locator('#fc-siteId').select_option('seed-2');save()
    updated=host.read_state()['settings']['fieldCameras']['profiles'][0];assert updated['lat']==0 and updated['lon']==0 and updated['locationSource']=='user-reference' and updated['siteId']=='seed-2' and updated['createdAt']==p['createdAt']
-   assert page.evaluate('JSON.stringify([AtlasWorkspace.sites.list(),AtlasWorkspace.layouts.read("desktop"),AtlasWorkspace.weather.read(),AtlasWorkspace.cameras.read(),AtlasWorkspace.liveEarth.read()])')==before
+   assert page.evaluate(invariant)==before
    passed('Coordinate pairs validate including zero; linking a site does not copy GPS or mutate research, layouts or weather/privacy choices')
-   page.locator('#fieldEdit').click();page.locator('#fc-lat').count()
-   page.locator('#fieldLocationDetails summary').click();page.locator('#fc-lat').fill('');page.locator('#fc-lon').fill('');page.locator('#fc-siteId').select_option('');page.locator('#fieldLocationDetails summary').click()
+   page.locator('#fieldEdit').click();page.locator('#fieldLocationDetails summary').click();page.locator('#fc-lat').fill('');page.locator('#fc-lon').fill('');page.locator('#fc-siteId').select_option('');page.locator('#fieldLocationDetails summary').click()
    page.locator('#fieldCameraDesk').evaluate('e=>e.scrollTop=0');page.screenshot(path=str(OUT/'02-Edit-Camera-Details.png'));save()
    page.locator('#fieldSearch').fill('three rivers');expect(page.locator('.field-choice')).to_have_count(1);page.locator('#fieldModeFilter').select_option('remote');expect(page.locator('.field-choice')).to_have_count(1);page.locator('#fieldSearch').fill('no-match');expect(page.locator('.field-choice')).to_have_count(0);page.locator('#fieldSearch').fill('');page.locator('#fieldModeFilter').select_option('all')
    passed('Search covers locality and tags; Both profiles are included in Local and Remote filters')
@@ -70,7 +70,7 @@ def main():
    page.locator('#dialog').evaluate('e=>e.close()');passed('Actual workspace JSON download excludes private camera profiles while local storage retains them')
    open_desk();page.once('dialog',lambda d:d.dismiss());page.locator('#fieldDelete').click();assert len(host.read_state()['settings']['fieldCameras']['profiles'])==1
    page.once('dialog',lambda d:d.accept());page.locator('#fieldDelete').click();expect(page.locator('#fieldCount')).to_have_text('0 saved profiles');assert host.read_state()['settings']['fieldCameras']['profiles']==[]
-   assert page.evaluate('JSON.stringify([AtlasWorkspace.sites.list(),AtlasWorkspace.layouts.read("desktop"),AtlasWorkspace.weather.read(),AtlasWorkspace.cameras.read(),AtlasWorkspace.liveEarth.read()])')==before
+   assert page.evaluate(invariant)==before
    passed('Confirmed removal affects only the profile; declining removal preserves it')
    page.locator('#fieldAdd').click();page.locator('#fc-name').fill('Demo restart profile');page.locator('#fc-host').fill('camera.example');save();page.locator('#fieldClose').click()
    assert not errors,errors;assert not external,external
