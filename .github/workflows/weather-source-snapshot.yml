@@ -1,0 +1,26 @@
+# One-shot private source handoff. No app execution, installation or public release.
+name: Prepare live weather development source
+on:
+  push:
+    branches: ['develop/next-workspaces']
+    paths: ['.github/workflows/weather-source-snapshot.yml']
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    if: ${{ github.event.repository.private && github.repository == 'nortja/atlas-command' && contains(github.event.head_commit.message, '[atlas-weather-source]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: a66516799657f316d7603c1ac88d25cc21f7c26a
+      - name: Archive tracked development source without credentials or workspaces
+        run: git archive --format=zip --output=atlas-weather-source.zip HEAD
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: atlas-weather-development-source
+          path: atlas-weather-source.zip
+          retention-days: 1
+          if-no-files-found: error
