@@ -70,7 +70,7 @@ internal static class AtlasHost
                 "--app=\"" + url + "\" --user-data-dir=\"" + profile + "\" --no-first-run --no-default-browser-check --window-size=1600,1000");
             start.UseShellExecute = false;
             Process.Start(start);
-            Log("Started local host; Store preview 1. No online feed or updater is installed.");
+            Log("Started local host; Development 1.1. No online feed or updater is installed.");
             while (!Stopping) {
                 if (new TimeSpan(DateTime.UtcNow.Ticks - Interlocked.Read(ref LastHeartbeat)).TotalMinutes > 5) break;
                 if (!Listener.Pending()) { Thread.Sleep(50); continue; }
@@ -204,7 +204,7 @@ internal static class AtlasHost
             if (method != "GET" && !head) { Error(stream,405,"Method not allowed"); return; }
             if (rel == "") rel = "index.html";
             // Serve the renderer only, never source/host files, data-folder backups, or directory listings.
-            bool allowed = rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
+            bool allowed = rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "src/next-ui.css" || rel == "src/workspace-layout.js" || rel == "src/lidar.js" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
             string ext = Path.GetExtension(rel).ToLowerInvariant();
             string type = ext == ".html" ? "text/html; charset=utf-8" : ext == ".js" ? "text/javascript; charset=utf-8" : ext == ".css" ? "text/css; charset=utf-8" : ext == ".svg" ? "image/svg+xml" : "";
             if (!allowed || type == "") { Error(stream,404,"Not found"); return; }

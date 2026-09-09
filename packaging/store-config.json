@@ -3,10 +3,11 @@
   "identityPublisher": "CN=C67667CB-8089-40FE-AA2B-2AC007243585",
   "publisherDisplayName": "Atlas Command Center",
   "displayName": "Atlas Command",
-  "version": "1.0.0.0",
+  "version": "1.1.0.0",
   "maxVersionTested": "REPLACE_AFTER_WINDOWS_COMPATIBILITY_TEST",
   "distributionIntent": "private",
   "priceIntent": "free",
   "makePublicOn": null,
-  "note": "Identity values transcribed exactly from the owner in this conversation; not independently fetched from Partner Center. Jaison Norton remains the owner/author; the provided Store publisher display name is Atlas Command Center. maxVersionTested intentionally remains pending actual Windows testing. Private/free fields express intent only and do not set Partner Center visibility. No credentials belong here."
+  "note": "Identity values transcribed exactly from the owner in this conversation; not independently fetched from Partner Center. Jaison Norton remains the owner/author; the provided Store publisher display name is Atlas Command Center. maxVersionTested intentionally remains pending actual Windows testing. Private/free fields express intent only and do not set Partner Center visibility. No credentials belong here.",
+  "developmentStatus": "NOT_SUBMITTED_NOT_APPROVED"
 }

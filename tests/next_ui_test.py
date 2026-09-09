@@ -1,7 +1,7 @@
 """Real native-host UI checks on a disposable GitHub Windows runner. No MSIX install."""
 from pathlib import Path
 import json,os,sys,hashlib,time
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, expect
 from windows_native_smoke import NativeSmoke
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'next-test-output'
@@ -30,15 +30,17 @@ def main():
    page.evaluate('(()=>{const s=AtlasWorkspace.sites.list();s[0].name="MUTATION TEST";})()')
    assert page.evaluate(record_view)==baseline
    passed('Module record views are copies, not mutable references to workspace data')
-   page.locator('#workspacePresets').click();page.locator('[data-preset="explore"]').click();page.wait_for_function('!document.querySelector("#workspaceChooser").open')
+   page.locator('#workspacePresets').click();page.locator('[data-preset="explore"]').click();page.locator("#workspaceChooser").wait_for(state="hidden")
    page.wait_for_timeout(350);page.screenshot(path=str(OUT/'01-Next-Observatory.png'))
-   page.locator('#workspacePresets').click();page.screenshot(path=str(OUT/'02-Workspace-Chooser.png'));page.locator('[data-preset="research"]').click();page.wait_for_function('!document.querySelector("#workspaceChooser").open')
+   page.set_viewport_size({'width':1366,'height':768});page.wait_for_timeout(250);page.screenshot(path=str(OUT/'04-Laptop-Workspace.png'))
+   page.set_viewport_size({'width':2560,'height':1440});page.wait_for_timeout(250)
+   page.locator('#workspacePresets').click();page.screenshot(path=str(OUT/'02-Workspace-Chooser.png'));page.locator('[data-preset="research"]').click();page.locator("#workspaceChooser").wait_for(state="hidden")
    assert page.locator('#planPanel').evaluate('(e)=>e.classList.contains("collapsed")')
-   page.locator('#workspacePresets').click();page.locator('#workspaceChooser [data-save]').click();page.wait_for_function('!document.querySelector("#workspaceChooser").open')
+   page.locator('#workspacePresets').click();page.locator('#workspaceChooser [data-save]').click();page.locator("#workspaceChooser").wait_for(state="hidden")
    research=page.evaluate('AtlasWorkspace.layouts.read("ultrawide").active')
-   page.locator('#workspacePresets').click();page.locator('[data-preset="expedition"]').click();page.wait_for_function('!document.querySelector("#workspaceChooser").open')
+   page.locator('#workspacePresets').click();page.locator('[data-preset="expedition"]').click();page.locator("#workspaceChooser").wait_for(state="hidden")
    assert page.locator('#dossierPanel').evaluate('(e)=>e.classList.contains("collapsed")')
-   page.locator('#workspacePresets').click();page.locator('[data-restore]').click();page.wait_for_function('!document.querySelector("#workspaceChooser").open')
+   page.locator('#workspacePresets').click();page.locator('[data-restore]').click();page.locator("#workspaceChooser").wait_for(state="hidden")
    assert page.evaluate('AtlasWorkspace.layouts.read("ultrawide").active')==research
    passed('Explore, Research, Expedition and custom save/restore work via real local writes')
    page.reload(wait_until='domcontentloaded');page.wait_for_selector('#workspacePresets')
@@ -70,7 +72,9 @@ def main():
    disk=json.loads((appdata/'Data'/'workspace.json').read_text('utf-8'))
    assert next(s for s in disk['sites'] if s['id']=='lidar-1')['research']['lidar']==saved
    passed('LiDAR metadata and publication dates persist to native disk and reload')
+   page.locator('#ratingFilter').select_option('1')
    page.locator('#lidarDeskBtn').click();page.locator('[data-show="lidar-1"]').click();assert page.locator('.site-heading').inner_text().startswith('Alianza')
+   assert page.locator('#ratingFilter').input_value()=='' and page.locator('.site-item').count()==4
    page.locator('[data-tab="research"]').click();page.locator('#alignmentBtn').click()
    for name,value in [('axis','20'),('declination','10'),('year','-1000'),('model','QA only'),('source','https://example.org/qa')]:page.locator('#alignmentForm [name="'+name+'"]').fill(value)
    page.locator('#alignmentForm button.primary').click();page.locator('#closeDialog').click();page.evaluate('AtlasTest.flush()')
@@ -79,7 +83,7 @@ def main():
    before=page.evaluate('AtlasWorkspace.layouts.read("ultrawide")')
    page.route('**/api/state',lambda route:route.fulfill(status=500,body='Synthetic save failure'))
    page.locator('#workspacePresets').click();page.locator('[data-preset="expedition"]').click()
-   page.wait_for_function('document.querySelector("#layoutStatus").textContent.startsWith("Not saved:")')
+   expect(page.locator("#layoutStatus")).to_contain_text("Not saved:")
    assert page.evaluate('AtlasWorkspace.layouts.read("ultrawide")')==before
    page.unroute('**/api/state');page.locator('#workspaceChooser [data-close]').click()
    passed('Failed local save reports the error and rolls back layout state')
@@ -87,7 +91,7 @@ def main():
     page.set_viewport_size({'width':width,'height':height});page.wait_for_timeout(220)
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),f'Overflow at {width}'
     page.locator('#workspacePresets').click()
-    if width>=950:page.locator('[data-preset="explore"]').click();page.wait_for_function('!document.querySelector("#workspaceChooser").open')
+    if width>=950:page.locator('[data-preset="explore"]').click();page.locator("#workspaceChooser").wait_for(state="hidden")
     else:assert page.locator('[data-preset="explore"]').is_disabled();page.locator('#workspaceChooser [data-close]').click()
     page.locator('#lidarDeskBtn').tap();assert page.locator('#lidarDesk').is_visible();page.locator('#lidarDesk [data-close]').click()
    assert page.evaluate('!!AtlasWorkspace.layouts.read("desktop").active.catalog')
