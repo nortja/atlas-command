@@ -26,9 +26,7 @@ def main():
  def collect_responses():
   if not responses:raise AssertionError('No native camera response received.')
   r=responses.pop();responses.clear()
-  # Read the same registered native endpoint while its in-memory frame is cached.
-  # The browser already decoded that image. Matching fetch time and length links
-  # the inspected bytes to the UI response without weakening connect-src for blob URLs.
+  # Inspect the same cached native frame without weakening browser CSP.
   ident=r.url.rsplit('/',1)[-1]
   status,headers,body=host.expect('POST','api/camera/'+ident,200,headers={'X-Atlas-Request':'local'})
   assert body[:3]==bytes([255,216,255]) and len(body)>10000
