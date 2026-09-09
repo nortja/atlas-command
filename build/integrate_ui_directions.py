@@ -10,6 +10,7 @@ def once(s,a,b):
 for name in ['app/index.html','app/workspace-preview.html']:
  def entry(s):
   s=once(s,'<link rel="stylesheet" href="src/cameras.css">','<link rel="stylesheet" href="src/cameras.css"><link rel="stylesheet" href="src/ui-directions.css">')
+  s=once(s,'<link rel="stylesheet" href="src/ui-directions.css">','<link rel="stylesheet" href="src/ui-directions.css"><link rel="stylesheet" href="src/ui-refinement.css">')
   return once(s,'<script src="src/app.js"></script>','<script src="src/ui-directions.js"></script><script src="src/app.js"></script>')
  edit(name,entry)
 def app(s):
@@ -22,7 +23,9 @@ def app(s):
  return s
 edit('app/src/app.js',app)
 edit('native/AtlasHost.cs',lambda s:once(s,'rel == "src/cameras.css" ||','rel == "src/cameras.css" || rel == "src/ui-directions.js" || rel == "src/ui-directions.css" ||'))
+edit('native/AtlasHost.cs',lambda s:once(s,'rel == "src/ui-directions.css" ||','rel == "src/ui-directions.css" || rel == "src/ui-refinement.css" ||'))
 edit('build/Build-Store.ps1',lambda s:once(s,"'src/cameras.css'","'src/cameras.css','src/ui-directions.js','src/ui-directions.css'"))
+edit('build/Build-Store.ps1',lambda s:once(s,"'src/ui-directions.css'","'src/ui-directions.css','src/ui-refinement.css'"))
 def globe(s):
  s=once(s,'  let R=this.radius;', '''  if(this.appearance&&W>=950){const focus=document.body.classList.contains('globe-focus');this.cy=H*(focus?.54:.66);this.radius=Math.min(H*(focus?.40:H<650?.265:H<1000?.29:.33),W*.248)*this.zoom;}
   const colors=this.appearance==='expedition'?{coast:'#c8ad7caa',inner:'#343528e8',middle:'#222820ee',edge:'#474b37f0',rim:'#d4bc86aa'}:this.appearance==='signal'?{coast:'#7fc8b5aa',inner:'#173b36e8',middle:'#112b2aee',edge:'#25554df0',rim:'#87dfc0aa'}:null;
@@ -37,9 +40,7 @@ def camera_test(s):
  def collect_responses():
   if not responses:raise AssertionError('No native camera response received.')
   r=responses.pop();responses.clear()
-  # Read the same registered native endpoint while its in-memory frame is cached.
-  # The browser already decoded that image. Matching fetch time and length links
-  # the inspected bytes to the UI response without weakening connect-src for blob URLs.
+  # Inspect the same cached native frame without weakening browser CSP.
   ident=r.url.rsplit('/',1)[-1]
   status,headers,body=host.expect('POST','api/camera/'+ident,200,headers={'X-Atlas-Request':'local'})
   assert body[:3]==bytes([255,216,255]) and len(body)>10000
@@ -61,5 +62,17 @@ def finish_ui_test(s):
  s=once(s,"success=False;page=None", "success=False;page=None;failure=''")
  s=once(s," finally:\n  if page and not success:", " except Exception as error:\n  failure=repr(error);raise\n finally:\n  if page and not success:")
  s=once(s,"{'success':success,'checks':checks", "{'success':success,'failure':failure,'checks':checks")
+ anchor=" def passed(s):checks.append(s);print('PASS: '+s,flush=True)"
+ replacement=anchor+'''\n def capture(path):
+  # Reset only ordinary scroll position after test interactions, then let the
+  # app's own transient toast expire. No DOM content or screenshot is fabricated.
+  page.locator('#dossierBody').evaluate('(el)=>el.scrollTop=0')
+  page.locator('#toast').wait_for(state='hidden',timeout=10000)
+  page.wait_for_timeout(250)
+  page.screenshot(path=path)'''
+ s=once(s,anchor,replacement)
+ s=s.replace("page.screenshot(path=str(OUT/(index+", "capture(str(OUT/(index+")
+ s=s.replace("page.screenshot(path=str(OUT/'A-Orbital-Ultrawide.png'))", "capture(str(OUT/'A-Orbital-Ultrawide.png'))")
+ s=s.replace("page.screenshot(path=str(OUT/'Appearance-Chooser.png'))", "capture(str(OUT/'Appearance-Chooser.png'))")
  return s
 edit('tests/ui_directions_native.py',finish_ui_test)
