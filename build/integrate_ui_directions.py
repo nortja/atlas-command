@@ -15,6 +15,9 @@ for name in ['app/index.html','app/workspace-preview.html']:
 def app(s):
  s=once(s,'window.AtlasWorkspace=Object.freeze({','const appearancePreferences=AtlasAppearance.store(()=>state.settings.appearance,v=>{state.settings.appearance=v;},flush,id=>{globe.appearance=id;window.dispatchEvent(new Event("atlas:appearance-changed"));});\nglobe.appearance=AtlasAppearance.normalize(state.settings.appearance);\nwindow.AtlasWorkspace=Object.freeze({\n appearance:Object.freeze({...appearancePreferences,overview:()=>AtlasAppearance.summarize(state.sites,visible.length,state.queue.length)}),')
  s=once(s,"globe.setSites(visible);renderCatalog();", "globe.setSites(visible);renderCatalog();window.dispatchEvent(new Event('atlas:catalog-changed'));")
+ s=once(s,"Math.min(s.y,h-ph-35)","Math.min(s.y,h-(s.collapsed?47:ph)-35)")
+ s=s.replace('The world is still full<br>of questions.','The world is still full <br>of questions.')
+ s=once(s,"$('#planBtn').onclick=planDialog;","$('#planBtn').onclick=planDialog;window.dispatchEvent(new Event('atlas:catalog-changed'));")
  s=s.replace('Switching units does not change source readings. Live weather feeds are not connected in this build.','Switching units does not change source readings. Optional live model weather is controlled separately in Live Earth.')
  return s
 edit('app/src/app.js',app)
@@ -30,9 +33,25 @@ edit('app/src/globe.js',globe)
 print('Integrated three bundled review appearances; no installation or Store action.')
 def camera_test(s):
  old="   frames.append({'camera':r.url.rsplit('/',1)[-1],'sha256':hashlib.sha256(r.body()).hexdigest(),'bytes':len(r.body()),'fetchedAt':r.headers.get('x-atlas-camera-fetched-at'),'modifiedAt':r.headers.get('x-atlas-camera-modified')})"
- new="   responses.append(r)\n def collect_responses():\n  while responses:\n   r=responses.pop(0);r.finished();body=r.body()\n   frames.append({'camera':r.url.rsplit('/',1)[-1],'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body),'fetchedAt':r.headers.get('x-atlas-camera-fetched-at'),'modifiedAt':r.headers.get('x-atlas-camera-modified')})"
+ previous="   responses.append(r)\n def collect_responses():\n  while responses:\n   r=responses.pop(0);r.finished();body=r.body()\n   frames.append({'camera':r.url.rsplit('/',1)[-1],'sha256':hashlib.sha256(body).hexdigest(),'bytes':len(body),'fetchedAt':r.headers.get('x-atlas-camera-fetched-at'),'modifiedAt':r.headers.get('x-atlas-camera-modified')})"
+ new='''   responses.append(r)
+ def collect_responses():
+  if not responses:raise AssertionError('No native camera response received.')
+  r=responses.pop();responses.clear()
+  # DevTools returned an empty body for this POST despite a decoded image in the
+  # page. Verify the bytes the application actually displays via its local blob.
+  blob=page.locator('#cameraView img').evaluate("""async img=>{
+   if(!img.src.startsWith('blob:'))throw Error('Expected a local received-image blob');
+   const bytes=new Uint8Array(await (await fetch(img.src)).arrayBuffer());
+   const digest=await crypto.subtle.digest('SHA-256',bytes);
+   return {bytes:bytes.length,sha256:Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''),signature:Array.from(bytes.slice(0,3)),width:img.naturalWidth,height:img.naturalHeight};
+  }""")
+  assert blob['signature']==[255,216,255] and blob['bytes']>10000 and blob['width']>=500
+  assert blob['bytes']==int(r.headers['content-length']), 'Rendered image size differs from actual native response'
+  frames.append({'camera':r.url.rsplit('/',1)[-1],**blob,'fetchedAt':r.headers.get('x-atlas-camera-fetched-at'),'modifiedAt':r.headers.get('x-atlas-camera-modified'),'verification':'Actual displayed blob matches native response Content-Length; no substituted imagery'})'''
  s=once(s,'network=[];frames=[];success=False','network=[];frames=[];responses=[];success=False')
- s=once(s,old,new)
+ if previous in s:s=s.replace(previous,new)
+ else:s=once(s,old,new)
  s=once(s,"   assert frames and frames[-1]['camera']=='K2cam'", "   collect_responses()\n   assert frames and frames[-1]['camera']=='K2cam'")
  return once(s,"   assert frames[-1]['camera']=='F1cam'", "   collect_responses()\n   assert frames[-1]['camera']=='F1cam'")
 edit('tests/release_tools_ui.py',camera_test)

@@ -38,6 +38,12 @@ def main():
    passed('All three appearance buttons persist through native writes without altering sites, layouts or privacy choices')
    page.reload();page.locator('#appearanceBtn').wait_for();expect(page.locator('body')).to_have_attribute('data-atlas-theme','signal')
    passed('Selected appearance survives renderer reload')
+   dossier=page.locator('#dossierPanel').bounding_box();plan=page.locator('#planPanel').bounding_box()
+   assert plan['y']>=dossier['y']+dossier['height']-1, (dossier,plan)
+   passed('Collapsed Expedition bar stays below the expanded dossier after reload')
+   page.locator('#queueBtn').click();expect(page.locator('[data-stat=queued]')).to_have_text('1')
+   page.locator('#queueBtn').click();expect(page.locator('[data-stat=queued]')).to_have_text('0')
+   passed('Mission counter responds to actual queue add and removal')
    page.locator('#search').fill('Göbekli');expect(page.locator('[data-stat=visible]')).to_have_text('1');expect(page.locator('[data-stat=total]')).to_have_text('26');page.locator('#search').fill('')
    passed('Filter count updates immediately while library totals remain unchanged')
    page.locator('#appearanceBtn').click();page.route('**/api/state',lambda r:r.fulfill(status=507,content_type='text/plain',body='Deliberate UI test: disk full'))
@@ -59,14 +65,17 @@ def main():
      assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),(theme,w)
      for selector in ['#instrumentDock','#appearanceBtn','#weatherCard']:
       box=page.locator(selector).bounding_box();assert box is not None and box['x']>=-1 and box['x']+box['width']<=w+1,(theme,w,selector,box)
-     if w==1366:page.screenshot(path=str(OUT/(index+'-'+name+'-Laptop.png')))
+     if w==1366:
+      page.locator('#workspacePresets').click();page.locator('[data-preset=research]').click();page.wait_for_timeout(250)
+      page.screenshot(path=str(OUT/(index+'-'+name+'-Laptop.png')))
      if w==3440 and theme=='orbital':page.screenshot(path=str(OUT/'A-Orbital-Ultrawide.png'))
     page.set_viewport_size({'width':1920,'height':1080})
    passed('Captured all three actual UI styles and checked laptop, desktop, ultrawide and compact viewport bounds')
    page.locator('#appearanceBtn').click();page.screenshot(path=str(OUT/'Appearance-Chooser.png'));page.locator('#appearanceClose').click()
    page.emulate_media(reduced_motion='reduce')
    assert page.evaluate('getComputedStyle(document.querySelector("#appearanceBtn")).transitionDuration')=='0s'
-   page.locator('#appearanceBtn').focus();assert page.locator('#appearanceBtn').evaluate('e=>getComputedStyle(e).outlineStyle')!='none'
+   page.locator('#appearanceBtn').focus();page.keyboard.press('Tab');page.keyboard.press('Shift+Tab');assert page.locator('#appearanceBtn').evaluate('e=>getComputedStyle(e).outlineStyle')!='none'
+   assert page.locator('#appearanceBtn').evaluate('e=>document.activeElement===e && e.matches(":focus-visible")')
    passed('Reduced-motion media preference and visible keyboard focus survive the redesign')
    assert page.evaluate('JSON.stringify(AtlasWorkspace.sites.list())')==before
    assert not errors,errors
