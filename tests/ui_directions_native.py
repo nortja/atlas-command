@@ -14,6 +14,14 @@ def main():
  if appdata.exists():raise RuntimeError('Refusing existing user workspace.')
  host=NativeSmoke(exe,appdata,temp);OUT.mkdir(exist_ok=True);checks=[];errors=[];requests=[];success=False;page=None
  def passed(s):checks.append(s);print('PASS: '+s,flush=True)
+ def assert_expedition_typography():
+  # Inspect browser-computed fonts, not merely stylesheet text.
+  for selector in ['.space-title h1','.site-heading']:
+   assert 'Georgia' in page.locator(selector).first.evaluate('e=>getComputedStyle(e).fontFamily'),selector
+  for selector in ['#appearanceBtn','#search','.panel-handle h2','.instrument-tile strong']:
+   assert 'Segoe UI' in page.locator(selector).first.evaluate('e=>getComputedStyle(e).fontFamily'),selector
+  assert 'tabular-nums' in page.locator('.instrument-tile strong').first.evaluate('e=>getComputedStyle(e).fontVariantNumeric')
+  assert 'Consolas' in page.locator('.coords').first.evaluate('e=>getComputedStyle(e).fontFamily')
  try:
   host.start()
   with sync_playwright() as pw:
@@ -35,7 +43,10 @@ def main():
     assert host.read_state()['settings']['appearance']==theme
     assert page.evaluate('JSON.stringify(AtlasWorkspace.sites.list())')==before
     assert page.evaluate('JSON.stringify([AtlasWorkspace.layouts.read("desktop"),AtlasWorkspace.layouts.read("ultrawide")])')==layout
+    if theme=='expedition':assert_expedition_typography()
+    else:assert 'Georgia' not in page.locator('.site-heading').first.evaluate('e=>getComputedStyle(e).fontFamily')
    passed('All three appearance buttons persist through native writes without altering sites, layouts or privacy choices')
+   passed('Expedition preserves editorial headings while controls and tabular readings use modern system fonts; other appearances stay separate')
    page.reload();page.locator('#appearanceBtn').wait_for();expect(page.locator('body')).to_have_attribute('data-atlas-theme','signal')
    passed('Selected appearance survives renderer reload')
    dossier=page.locator('#dossierPanel').bounding_box();plan=page.locator('#planPanel').bounding_box()
@@ -65,6 +76,10 @@ def main():
      assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),(theme,w)
      for selector in ['#instrumentDock','#appearanceBtn','#weatherCard']:
       box=page.locator(selector).bounding_box();assert box is not None and box['x']>=-1 and box['x']+box['width']<=w+1,(theme,w,selector,box)
+     if theme=='expedition':
+      assert_expedition_typography()
+      assert 'Segoe UI' in page.locator('.wx-now>strong').evaluate('e=>getComputedStyle(e).fontFamily')
+      assert 'tabular-nums' in page.locator('.wx-now>strong').evaluate('e=>getComputedStyle(e).fontVariantNumeric')
      if w==1366:
       page.locator('#workspacePresets').click();page.locator('[data-preset=research]').click();page.wait_for_timeout(250)
       page.screenshot(path=str(OUT/(index+'-'+name+'-Laptop.png')))
@@ -92,6 +107,6 @@ def main():
   finally:
    import shutil
    if appdata.exists():shutil.rmtree(appdata,ignore_errors=True)
-  (OUT/'UI-REVIEW-RESULTS.json').write_text(json.dumps({'success':success,'checks':checks,'environment':'GitHub Windows Server 2022; unpackaged native helper and installed Edge, not Windows 11 packaged install','errors':errors,'externalRequests':len(requests),'sourceCommit':os.environ.get('GITHUB_SHA'),'sourceHashes':{p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in ['app/src/ui-directions.js','app/src/ui-directions.css','app/src/app.js','app/src/globe.js']}},indent=2),encoding='utf-8')
+  (OUT/'UI-REVIEW-RESULTS.json').write_text(json.dumps({'success':success,'checks':checks,'environment':'GitHub Windows Server 2022; unpackaged native helper and installed Edge, not Windows 11 packaged install','errors':errors,'externalRequests':len(requests),'sourceCommit':os.environ.get('GITHUB_SHA'),'sourceHashes':{p:hashlib.sha256((ROOT/p).read_bytes()).hexdigest() for p in ['app/src/ui-directions.js','app/src/ui-directions.css','app/src/ui-refinement.css','app/src/app.js','app/src/globe.js']}},indent=2),encoding='utf-8')
  return 0 if success else 1
 if __name__=='__main__':raise SystemExit(main())
