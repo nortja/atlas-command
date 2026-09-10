@@ -122,8 +122,8 @@ class NativeSmoke:
             document = stdout.decode('utf-8', errors='replace')
             if 'id="boot"' in document:
                 raise AssertionError('The native-served renderer did not clear its startup screen.')
-            if document.count('class="site-item ') != 26:
-                raise AssertionError('The native-served renderer did not display its 26 starter records.')
+            if document.count('class="site-item ') != 40:
+                raise AssertionError('The native-served renderer did not display its 40 bundled catalog records.')
             if 'SAVED ON THIS PC' not in document:
                 raise AssertionError('Renderer did not select native storage mode.')
         finally:
@@ -149,11 +149,12 @@ class NativeSmoke:
         assert headers.get('cache-control') == 'no-store'
         self.passed('Native HTTP responses provide expected security headers')
         for path in ['src/app.js', 'src/core.js', 'src/globe.js', 'src/styles.css',
-                     'assets/world.js', 'assets/icon.svg', 'data/seed.js']:
+                     'src/weather-ribbon.js', 'src/weather-ribbon.css', 'src/earth-physical.js',
+                     'assets/world.js', 'assets/icon.svg', 'data/seed.js', 'data/site-expansion.js']:
             self.expect('GET', path, 200)
         self.passed('All renderer assets are available through the real local host')
         self.render()
-        self.passed('Existing Edge renders 26 starter records using the native host, without a mock storage adapter')
+        self.passed('Existing Edge renders 40 bundled catalog records using the native host, without a mock storage adapter')
         self.expect('GET', 'index.html', 403, headers={'Host': 'untrusted.invalid'})
         self.expect('GET', 'api/state', 403, headers={'Origin': 'https://untrusted.invalid'})
         self.expect('GET', 'api/state', 403, headers={'Sec-Fetch-Site': 'cross-site'})
