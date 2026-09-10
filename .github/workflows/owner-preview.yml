@@ -1,4 +1,5 @@
 # Private same-day owner preview. Builds and tests only; never installs on the owner's PC or uploads to Store.
+# Validation revision: photographic globe keeps the local renderer until the optional NASA mosaic is ready.
 name: Build Atlas owner preview
 on:
   push:
