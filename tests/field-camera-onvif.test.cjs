@@ -1,0 +1,11 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const O=require('../app/src/field-camera-onvif.js');
+const p={id:'cam-1',host:'camera.local',method:'undecided',port:null,path:''};
+test('automatic ONVIF candidates stay on the exact saved host',()=>{const c=O.automaticCandidates(p);assert.deepEqual(c.map(x=>x.host),['camera.local','camera.local']);assert.deepEqual(c.map(x=>x.path),['/onvif/device_service','/onvif/device_service']);assert.deepEqual(c.map(x=>x.scheme),['http','https']);});
+test('saved explicit port is preserved without scanning alternatives',()=>{const c=O.automaticCandidates({...p,port:8080});assert.equal(c.length,1);assert.equal(c[0].url,'http://camera.local:8080/onvif/device_service');});
+test('explicit ONVIF path is used only for ONVIF method',()=>{assert.equal(O.endpoint({...p,method:'onvif',path:'/custom/onvif'},'http').path,'/custom/onvif');assert.equal(O.endpoint({...p,method:'rtsp',path:'/stream1'},'http').path,'/onvif/device_service');});
+test('SOAP builders request Media capabilities and profiles without credentials',()=>{const a=O.getCapabilitiesEnvelope(),b=O.getProfilesEnvelope();assert.match(a,/GetCapabilities/);assert.match(a,/Media/);assert.match(b,/GetProfiles/);assert.doesNotMatch(a+b,/UsernameToken|Password|Authorization/);});
+test('advertised media URI must stay on same camera host',()=>{const v=O.validateAdvertisedUri('rtsp://camera.local:554/stream1','camera.local');assert.equal(v.scheme,'rtsp');assert.equal(v.port,554);assert.throws(()=>O.validateAdvertisedUri('rtsp://other.local/stream','camera.local'),/different host/);});
+test('credential-bearing or unsupported advertised URIs are refused',()=>{assert.throws(()=>O.validateAdvertisedUri('rtsp://user:pass@camera.local/stream','camera.local'),/Credential-bearing/);assert.throws(()=>O.validateAdvertisedUri('file:///tmp/cam','camera.local'),/Unsupported/);});
+test('module is planning-only and performs no network access',()=>{const s=fs.readFileSync('app/src/field-camera-onvif.js','utf8');assert.doesNotMatch(s,/\bfetch\s*\(|XMLHttpRequest|WebSocket|TcpClient|Dns\.|HttpWebRequest|MediaRecorder|getUserMedia/);});
