@@ -13,6 +13,14 @@ def once(s,a,b):
  if s.count(a)!=1:raise RuntimeError('Route-test integration anchor mismatch: '+a[:100])
  return s.replace(a,b,1)
 
+def insert_before_once(s,anchor,item):
+ if item in s:return s
+ if s.count(anchor)!=1:raise RuntimeError('Route-test asset anchor mismatch: '+anchor[:100])
+ return s.replace(anchor,item+anchor,1)
+
+for p in ['app/index.html','app/workspace-preview.html']:
+ edit(p,lambda s:insert_before_once(s,'<script src="src/ui-directions.js"></script>','<script src="src/field-camera-test.js"></script>'))
+
 BLOCK=r'''
     static string NormalizeFieldCameraHost(string value)
     {
@@ -96,7 +104,20 @@ def native(s):
  if route not in s:
   if s.count(router)!=1:raise RuntimeError('Native route-test API anchor missing')
   s=s.replace(router,route+router,1)
+ allow='rel == "src/field-cameras.js" ||'
+ addition='rel == "src/field-camera-test.js" || rel == "src/field-cameras.js" ||'
+ if 'rel == "src/field-camera-test.js"' not in s:
+  if s.count(allow)!=1:raise RuntimeError('Native route-test asset allowlist anchor missing')
+  s=s.replace(allow,addition,1)
  return s
 
 edit('native/AtlasHost.cs',native)
-print('Integrated exact saved-endpoint camera TCP route test. No scanning, credentials, ONVIF SOAP, playback or recording.')
+
+def build(s):
+ asset="'src/field-camera-test.js'"
+ if asset in s:return s
+ anchor="'src/ui-refinement.css'"
+ if s.count(anchor)!=1:raise RuntimeError('Build route-test asset anchor missing')
+ return s.replace(anchor,anchor+','+asset,1)
+edit('build/Build-Store.ps1',build)
+print('Integrated deliberate exact saved-endpoint camera route test and UI. No scanning, credentials, ONVIF SOAP, playback or recording.')
