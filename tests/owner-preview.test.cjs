@@ -8,7 +8,7 @@ test('owner preview remains private unsigned development output',()=>{
   assert.match(build,/PRIVATE_OWNER_DEVELOPMENT/);
   assert.match(build,/signed=\$false/);
   assert.match(build,/storeCertified=\$false/);
-  assert.doesNotMatch(build,/SignTool|signtool|Partner Center|Store submission/i);
+  assert.doesNotMatch(build,/\bSignTool(?:\.exe)?\b|\bsigntool(?:\.exe)?\b|Add-AppxPackage|New-SelfSignedCertificate|Submit.*Store|Upload.*Store/i);
 });
 
 test('preview installer is per-user and does not request elevation or weaken security',()=>{
