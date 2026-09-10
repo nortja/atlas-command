@@ -1,10 +1,10 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const s=fs.readFileSync('build/integrate_field_camera_route_test.py','utf8');
-test('native route test is an explicit local POST API',()=>{assert.match(s,/api\/field-camera-test\/route/);assert.match(s,/method != \\"POST\\"/);assert.match(s,/X-Atlas-Request|explicit local action/);});
+test('native route test is an explicit local POST API',()=>{assert.match(s,/api\/field-camera-test\/route/);assert.ok(s.includes('method != "POST"'));assert.match(s,/explicit local action/);});
 test('route test remains bound to the saved profile host',()=>{assert.match(s,/CameraProfileHost\(id\)/);assert.match(s,/Camera address changed/);assert.match(s,/String\.Equals\(host,current,StringComparison\.Ordinal\)/);});
 test('DNS is resolved once into a bounded endpoint set',()=>{assert.equal((s.match(/Dns\.GetHostAddresses\(host\)/g)||[]).length,1);assert.match(s,/raw\.Length>16/);assert.match(s,/usable\.Count>8/);assert.match(s,/UnsafeCameraAddress/);});
 test('loopback multicast and wildcard destinations are refused',()=>{assert.match(s,/IPAddress\.IsLoopback/);assert.match(s,/IPAddress\.Any/);assert.match(s,/IPv6Any/);assert.match(s,/IsIPv6Multicast/);assert.match(s,/b\[0\]>=224/);});
 test('one user supplied port and bounded timeout are enforced',()=>{assert.match(s,/port<1 \|\| port>65535/);assert.match(s,/timeoutMs<1000 \|\| timeoutMs>5000/);assert.doesNotMatch(s,/for\s*\([^)]*port\+\+|while\s*\([^)]*port/);});
 test('route test never loads camera credentials or media',()=>{const block=s.slice(s.indexOf('static bool TryFieldCameraTcp'),s.indexOf("'''",s.indexOf('static bool TryFieldCameraTcp')));assert.doesNotMatch(block,/ReadCameraSecret|Password|UsernameToken|RTSP|GetStreamUri|MediaRecorder|recording/i);});
-test('route result is truthful and does not claim live video',()=>{assert.match(s,/result\[\\"reachable\\"\]/);assert.match(s,/credentialsUsed/);assert.match(s,/scanNetwork/);assert.doesNotMatch(s,/connected\\"\]=true|live\\"\]=true/);});
+test('route result is truthful and does not claim live video',()=>{assert.ok(s.includes('result["reachable"]'));assert.match(s,/credentialsUsed/);assert.match(s,/scanNetwork/);assert.doesNotMatch(s,/connected\"\]=true|live\"\]=true/);});
