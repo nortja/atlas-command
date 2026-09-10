@@ -1,10 +1,10 @@
 # Private same-day owner preview. Builds and tests only; never installs on the owner's PC or uploads to Store.
-# Validation revision: compact weather ribbon is viewport-bounded while photographic Earth remains offline-first.
+# Validation revision: compact weather ribbon is viewport-bounded; the one approved NASA visual basemap is isolated in CI.
 name: Build Atlas owner preview
 on:
   push:
     branches: ['develop/ui-directions']
-    paths: ['.github/workflows/owner-preview.yml','build/Build-OwnerPreview.ps1','packaging/owner-preview/**','tests/owner-preview.test.cjs','tests/live-weather.test.cjs','tests/windows_native_smoke.py','build/integrate_field_camera_onvif_service.py','build/integrate_windows_webcam.py','app/src/windows-webcam.js','app/src/windows-webcam.css','tests/windows-webcam.test.cjs','tests/windows_webcam_ui.py','build/integrate_experience_push.py','app/src/weather-desk.js','app/src/weather-desk.css','app/src/ocean-currents.js','app/src/ocean-currents.css','app/src/site-detail-enhance.js','app/src/site-detail-enhance.css','tests/experience-push.test.cjs','tests/experience_ui.py','build/integrate_visual_hd_push.py','app/src/weather-ribbon.js','app/src/weather-ribbon.css','app/src/earth-physical.js','app/src/satellite-earth.js','app/src/satellite-earth.css','app/data/site-expansion.js','tests/visual-hd-push.test.cjs','tests/satellite-earth.test.cjs','tests/visual_hd_ui.py']
+    paths: ['.github/workflows/owner-preview.yml','build/Build-OwnerPreview.ps1','packaging/owner-preview/**','tests/owner-preview.test.cjs','tests/live-weather.test.cjs','tests/windows_native_smoke.py','tests/next_ui_test.py','build/integrate_field_camera_onvif_service.py','build/integrate_windows_webcam.py','app/src/windows-webcam.js','app/src/windows-webcam.css','tests/windows-webcam.test.cjs','tests/windows_webcam_ui.py','build/integrate_experience_push.py','app/src/weather-desk.js','app/src/weather-desk.css','app/src/ocean-currents.js','app/src/ocean-currents.css','app/src/site-detail-enhance.js','app/src/site-detail-enhance.css','tests/experience-push.test.cjs','tests/experience_ui.py','build/integrate_visual_hd_push.py','app/src/weather-ribbon.js','app/src/weather-ribbon.css','app/src/earth-physical.js','app/src/satellite-earth.js','app/src/satellite-earth.css','app/data/site-expansion.js','tests/visual-hd-push.test.cjs','tests/satellite-earth.test.cjs','tests/visual_hd_ui.py']
 permissions:
   contents: read
 concurrency:
