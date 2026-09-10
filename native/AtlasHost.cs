@@ -9,6 +9,7 @@ using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -23,7 +24,7 @@ internal static class AtlasHost
     static readonly object LogLock = new object();
     static readonly SemaphoreSlim Clients = new SemaphoreSlim(16, 16);
     static readonly UTF8Encoding Utf8 = new UTF8Encoding(false, true);
-    static string Root, AppData, DataDir, MediaDir, StatePath, Prefix, Authority, Origin;
+    static string Root, AppData, DataDir, MediaDir, CredentialDir, StatePath, Prefix, Authority, Origin;
     static string LogPath;
     static TcpListener Listener;
     static volatile bool Stopping;
@@ -56,8 +57,10 @@ internal static class AtlasHost
             if (edge == null) throw new Exception("Microsoft Edge was not found in a standard location. This build requires Microsoft Edge. Ask your administrator to review this prerequisite; do not bypass endpoint policy. No runtime has been installed or downloaded.");
             DataDir = Path.Combine(AppData, "Data");
             MediaDir = Path.Combine(DataDir, "media");
+            CredentialDir = Path.Combine(AppData, "Credentials");
             StatePath = Path.Combine(DataDir, "workspace.json");
             Directory.CreateDirectory(MediaDir);
+            Directory.CreateDirectory(CredentialDir);
             Listener = new TcpListener(IPAddress.Loopback, 0);
             Listener.Start(16);
             int port = ((IPEndPoint)Listener.LocalEndpoint).Port;
@@ -155,6 +158,99 @@ internal static class AtlasHost
         finally { Monitor.Exit(CameraLock); }
     }
 
+
+    sealed class CameraSecret
+    {
+        public int Version { get; set; }
+        public string ProfileId { get; set; }
+        public string Host { get; set; }
+        public string Username { get; set; }
+        public string Password { get; set; }
+    }
+    static string CameraCredentialPath(string profileId)
+    {
+        if (!Regex.IsMatch(profileId ?? "", @"\Acam-[A-Za-z0-9-]{1,90}\z")) throw new InvalidDataException("Invalid camera profile identifier.");
+        return Path.Combine(CredentialDir, profileId + ".bin");
+    }
+    static string CameraProfileHost(string profileId)
+    {
+        lock (DataLock) {
+            if (!File.Exists(StatePath)) throw new InvalidDataException("Save the camera profile before adding sign-in details.");
+            Dictionary<string,object> root = Json().DeserializeObject(File.ReadAllText(StatePath,Utf8)) as Dictionary<string,object>;
+            object value; if (root == null || !root.TryGetValue("settings",out value)) throw new InvalidDataException("Camera profile is unavailable.");
+            Dictionary<string,object> settings = value as Dictionary<string,object>;
+            if (settings == null || !settings.TryGetValue("fieldCameras",out value)) throw new InvalidDataException("Camera profile is unavailable.");
+            Dictionary<string,object> cameras = value as Dictionary<string,object>;
+            if (cameras == null || !cameras.TryGetValue("profiles",out value) || !(value is object[])) throw new InvalidDataException("Camera profile is unavailable.");
+            foreach (object item in (object[])value) {
+                Dictionary<string,object> p = item as Dictionary<string,object>; object id,host;
+                if (p != null && p.TryGetValue("id",out id) && String.Equals(Convert.ToString(id,CultureInfo.InvariantCulture),profileId,StringComparison.Ordinal) && p.TryGetValue("host",out host))
+                    return Convert.ToString(host,CultureInfo.InvariantCulture);
+            }
+        }
+        throw new InvalidDataException("Camera profile is unavailable.");
+    }
+    static Dictionary<string,object> CredentialRequest(byte[] body)
+    {
+        Dictionary<string,object> j = Json().DeserializeObject(Utf8.GetString(body)) as Dictionary<string,object>;
+        if (j == null) throw new InvalidDataException("Invalid camera sign-in request.");
+        return j;
+    }
+    static string RequiredCredentialText(Dictionary<string,object> j,string key,int max,bool allowEmpty=false)
+    {
+        object raw; if (!j.TryGetValue(key,out raw) || !(raw is string)) throw new InvalidDataException("Incomplete camera sign-in request.");
+        string value=(string)raw; if ((!allowEmpty && String.IsNullOrWhiteSpace(value)) || value.Length>max || value.IndexOf('\0')>=0) throw new InvalidDataException("Camera sign-in field is invalid.");
+        return key=="username" ? value.Trim() : value;
+    }
+    static CameraSecret ReadCameraSecret(string profileId)
+    {
+        string path=CameraCredentialPath(profileId); if (!File.Exists(path)) return null;
+        byte[] cipher=File.ReadAllBytes(path); if (cipher.Length==0 || cipher.Length>16384) throw new InvalidDataException("Saved camera sign-in could not be read.");
+        byte[] plain=null;
+        try {
+            plain=ProtectedData.Unprotect(cipher,null,DataProtectionScope.CurrentUser);
+            CameraSecret secret=Json().Deserialize<CameraSecret>(Utf8.GetString(plain));
+            if (secret==null || secret.Version!=1 || secret.ProfileId!=profileId || String.IsNullOrEmpty(secret.Host) || secret.Username==null || secret.Password==null) throw new InvalidDataException("Saved camera sign-in could not be read.");
+            return secret;
+        } catch (CryptographicException) { throw new InvalidDataException("Saved camera sign-in is not available to this Windows user."); }
+        finally { if (plain!=null) Array.Clear(plain,0,plain.Length); Array.Clear(cipher,0,cipher.Length); }
+    }
+    static void WriteCameraSecret(CameraSecret secret)
+    {
+        byte[] plain=Utf8.GetBytes(Json().Serialize(secret)),cipher=null; string path=CameraCredentialPath(secret.ProfileId),temp=path+"."+Guid.NewGuid().ToString("N")+".tmp",old=path+".old";
+        try {
+            cipher=ProtectedData.Protect(plain,null,DataProtectionScope.CurrentUser);
+            using (FileStream f=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)) { f.Write(cipher,0,cipher.Length); f.Flush(true); }
+            if (File.Exists(path)) { if (File.Exists(old)) File.Delete(old); File.Replace(temp,path,old,true); if (File.Exists(old)) File.Delete(old); }
+            else File.Move(temp,path);
+        } finally { Array.Clear(plain,0,plain.Length); if (cipher!=null) Array.Clear(cipher,0,cipher.Length); if (File.Exists(temp)) try { File.Delete(temp); } catch { } if (File.Exists(old)) try { File.Delete(old); } catch { } }
+    }
+    static void SendCredentialStatus(NetworkStream stream,bool saved,string username="",bool needsUpdate=false)
+    {
+        Dictionary<string,object> result=new Dictionary<string,object>(); result["saved"]=saved; result["needsUpdate"]=needsUpdate; if (saved) result["username"]=username;
+        SendJson(stream,Json().Serialize(result));
+    }
+    static void HandleCameraCredentials(NetworkStream stream,string action,Dictionary<string,string> headers,byte[] body)
+    {
+        RequireType(headers,"application/json"); Dictionary<string,object> j=CredentialRequest(body);
+        string id=RequiredCredentialText(j,"profileId",100),host=RequiredCredentialText(j,"host",253); string currentHost=CameraProfileHost(id);
+        if (!String.Equals(currentHost,host,StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Camera address changed. Reopen the current profile before using saved sign-in details.");
+        if (action=="status") {
+            CameraSecret secret=ReadCameraSecret(id); if (secret==null) { SendCredentialStatus(stream,false); return; }
+            if (!String.Equals(secret.Host,currentHost,StringComparison.OrdinalIgnoreCase)) { SendCredentialStatus(stream,false,"",true); return; }
+            SendCredentialStatus(stream,true,secret.Username); return;
+        }
+        if (action=="save") {
+            string username=RequiredCredentialText(j,"username",160),password=RequiredCredentialText(j,"password",1024);
+            WriteCameraSecret(new CameraSecret {Version=1,ProfileId=id,Host=currentHost,Username=username,Password=password});
+            SendCredentialStatus(stream,true,username); return;
+        }
+        if (action=="forget") {
+            string path=CameraCredentialPath(id); if (File.Exists(path)) File.Delete(path); SendCredentialStatus(stream,false); return;
+        }
+        throw new InvalidDataException("Unknown camera sign-in action.");
+    }
+
     static string FindEdge()
     {
         string[] bases = { Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) };
@@ -241,6 +337,7 @@ internal static class AtlasHost
                     SendJson(stream,"{\"ok\":true}"); return;
                 }
             }
+            if (rel.StartsWith("api/field-camera-credentials/",StringComparison.Ordinal)) { if (method != "POST") { Error(stream,405,"Camera sign-in actions require an explicit local action"); return; } HandleCameraCredentials(stream,rel.Substring("api/field-camera-credentials/".Length),headers,body); return; }
             if (rel.StartsWith("api/media/", StringComparison.Ordinal)) {
                 string key = rel.Substring("api/media/".Length); string file = MediaPath(key); string mime = MediaTypes[Path.GetExtension(key)];
                 if (method == "POST") {
@@ -267,7 +364,7 @@ internal static class AtlasHost
             if (method != "GET" && !head) { Error(stream,405,"Method not allowed"); return; }
             if (rel == "") rel = "index.html";
             // Serve the renderer only, never source/host files, data-folder backups, or directory listings.
-            bool allowed = rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "src/next-ui.css" || rel == "src/workspace-layout.js" || rel == "src/weather-units.js" || rel == "src/live-weather.js" || rel == "src/live-weather.css" || rel == "src/data-refresh.js" || rel == "src/cameras.js" || rel == "src/cameras.css" || rel == "src/ui-directions.js" || rel == "src/ui-directions.css" || rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/lidar.js" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
+            bool allowed = rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "src/next-ui.css" || rel == "src/workspace-layout.js" || rel == "src/weather-units.js" || rel == "src/live-weather.js" || rel == "src/live-weather.css" || rel == "src/data-refresh.js" || rel == "src/cameras.js" || rel == "src/cameras.css" || rel == "src/ui-directions.js" || rel == "src/ui-directions.css" || rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-diagnostics.js" || rel == "src/field-camera-onvif.js" || rel == "src/field-camera-transport.js" || rel == "src/field-camera-layout.js" || rel == "src/field-camera-recordings.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/field-camera-ux.js" || rel == "src/field-camera-ux.css" || rel == "src/field-camera-auth.js" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/lidar.js" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
             string ext = Path.GetExtension(rel).ToLowerInvariant();
             string type = ext == ".html" ? "text/html; charset=utf-8" : ext == ".js" ? "text/javascript; charset=utf-8" : ext == ".css" ? "text/css; charset=utf-8" : ext == ".svg" ? "image/svg+xml" : "";
             if (!allowed || type == "") { Error(stream,404,"Not found"); return; }

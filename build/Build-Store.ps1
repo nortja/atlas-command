@@ -58,7 +58,7 @@ $null = New-Item -ItemType Directory -Force -Path $Stage,$Dist
 # Runtime content is an explicit allow-list. No compiler, batch file, C# source,
 # private workspace, personal photos, signing keys or build scripts are shipped.
 $RuntimeFiles = @(
-    'index.html','src/app.js','src/core.js','src/globe.js','src/styles.css','src/workspace-layout.js','src/weather-units.js','src/live-weather.js','src/live-weather.css','src/data-refresh.js','src/cameras.js','src/cameras.css','src/ui-directions.js','src/ui-directions.css','src/ui-refinement.css','src/field-cameras.js','src/field-camera-desk.js','src/field-cameras.css','src/lidar.js','src/next-ui.css',
+    'index.html','src/app.js','src/core.js','src/globe.js','src/styles.css','src/workspace-layout.js','src/weather-units.js','src/live-weather.js','src/live-weather.css','src/data-refresh.js','src/cameras.js','src/cameras.css','src/ui-directions.js','src/ui-directions.css','src/ui-refinement.css','src/field-camera-diagnostics.js','src/field-camera-onvif.js','src/field-camera-transport.js','src/field-camera-layout.js','src/field-camera-recordings.js','src/field-camera-ux.js','src/field-camera-ux.css','src/field-camera-auth.js','src/field-cameras.js','src/field-camera-desk.js','src/field-cameras.css','src/lidar.js','src/next-ui.css',
     'assets/world.js','assets/icon.svg','assets/COUNTRYINFO-LICENSE.txt','data/seed.js'
 )
 foreach ($Relative in $RuntimeFiles) {
@@ -78,7 +78,7 @@ $Exe = Join-Path $Stage 'AtlasCommand.exe'
 $CompilerArgs = @('/nologo','/codepage:65001','/target:winexe','/platform:x64','/optimize+','/warn:4','/warnaserror+',
     "/out:$Exe",('/win32manifest:' + (Join-Path $Root 'native\WindowsApp.manifest')),
     ('/win32icon:' + (Join-Path $Root 'native\AtlasCommand.ico')),
-    '/reference:System.dll,System.Core.dll,System.Web.Extensions.dll,System.Windows.Forms.dll',
+    '/reference:System.dll,System.Core.dll,System.Security.dll,System.Web.Extensions.dll,System.Windows.Forms.dll',
     (Join-Path $Root 'native\AtlasHost.cs'),(Join-Path $Root 'native\AssemblyInfo.cs'),$VersionSource)
 & $Compiler @CompilerArgs
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $Exe)) { throw 'Native compilation failed; no release was produced.' }
