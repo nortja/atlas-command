@@ -6,6 +6,7 @@ from windows_native_smoke import NativeSmoke
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'next-test-output'
 CHECKS=[]
+NASA_VISUAL='https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png'
 def passed(label):CHECKS.append(label);print('PASS:',label,flush=True)
 def main():
  if os.name!='nt' or os.environ.get('GITHUB_ACTIONS')!='true' or os.environ.get('RUNNER_ENVIRONMENT')!='github-hosted':raise RuntimeError('Disposable GitHub-hosted Windows runner required.')
@@ -20,7 +21,10 @@ def main():
    browser=pw.chromium.launch(channel='msedge',headless=True)
    context=browser.new_context(viewport={'width':2560,'height':1440},has_touch=True)
    page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
-   page.on('request',lambda r:external.append(r.url) if not r.url.startswith(('http://127.0.0.1:','data:','blob:')) else None)
+   # The fixed NASA Blue Marble image is an approved visual basemap, not a data/API endpoint.
+   # Abort it in CI so the workspace test remains deterministic and does not depend on Internet availability.
+   page.route(NASA_VISUAL,lambda route:route.abort())
+   page.on('request',lambda r:external.append(r.url) if not r.url.startswith(('http://127.0.0.1:','data:','blob:')) and r.url!=NASA_VISUAL else None)
    page.goto(host.url,wait_until='domcontentloaded');page.wait_for_selector('#workspacePresets');page.wait_for_selector('#lidarDeskBtn')
    assert page.locator('.site-item').count()==26
    assert page.evaluate('AtlasWorkspace.version')==1 and page.evaluate('AtlasWorkspace.storageMode')=='native'
@@ -99,7 +103,7 @@ def main():
    passed('Laptop, ultrawide and compact layouts work without page overflow; touch taps tested by emulation')
    assert not errors,errors
    assert not external,'Unexpected external renderer request'
-   passed('No uncaught renderer errors or external renderer network requests')
+   passed('No uncaught renderer errors or unapproved external renderer network requests')
    page.evaluate('AtlasTest.flush()');context.close();browser.close()
   host.stop();host.start()
   final=host.read_state();assert next(s for s in final['sites'] if s['id']=='lidar-1')['research']['lidar']==saved
