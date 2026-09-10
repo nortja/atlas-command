@@ -104,8 +104,8 @@ def native(s):
  if route not in s:
   if s.count(router)!=1:raise RuntimeError('Native route-test API anchor missing')
   s=s.replace(router,route+router,1)
- allow='rel == "src/field-cameras.js" ||'
- addition='rel == "src/field-camera-test.js" || rel == "src/field-cameras.js" ||'
+ allow='rel == "src/ui-refinement.css" ||'
+ addition='rel == "src/ui-refinement.css" || rel == "src/field-camera-test.js" ||'
  if 'rel == "src/field-camera-test.js"' not in s:
   if s.count(allow)!=1:raise RuntimeError('Native route-test asset allowlist anchor missing')
   s=s.replace(allow,addition,1)
