@@ -7,7 +7,8 @@ Status: consolidated release design; NOT implemented as a private IP/field-camer
 
 Original request: 'I would also like to add a field camera if needed.'
 Usage: 'Probably both' on site and watching a remotely deployed camera from home.
-Latest clarification: 'I do own a camera but want to be able to connect any if I want', followed by 'via an ip address'.
+Latest camera architecture clarification: owner wants broad standards-based camera support through manually entered IP address/hostname rather than one-brand-only support.
+Latest credential preference: owner wants camera credentials entered once and then saved securely for reuse on the same Windows user account.
 
 Design for manually adding authorized cameras by IP address, without a single-brand restriction. Do not require a model-specific catalog entry for every supported standards-based camera. Do not interpret this as universal camera compatibility, permission to connect now, or authorization to purchase equipment or services. Hardware model remains useful for the first actual compatibility test, not as an architectural restriction.
 
@@ -21,9 +22,27 @@ The IP address identifies the endpoint; it is not necessarily the full stream ad
 
 Test connection must be a deliberate action to the entered endpoint. Distinguish address/route failure, authentication failure, unsupported protocol/codec, certificate validation failure, and successful decoded video or snapshot. A response to ping, HTTP or authentication alone is not proof of live playback. Show a preview before linking to a site/mission. Reconnecting a saved camera is a separate deliberate action; saving a profile does not activate it on future app starts.
 
+## Credential storage design
+
+The owner has selected 'enter once, save securely'. Credentials must therefore be stored outside the ordinary Atlas workspace and outside camera-profile metadata.
+
+Implementation target:
+- Store username/password secrets in a Windows-protected credential store bound to the current Windows user account. Prefer Windows Credential Manager or an equivalent Windows-protected mechanism that can be tested with the packaged Win32 app.
+- Camera profile data stores only a non-secret credential reference identifier. It must never store the password, access token or full credential-bearing URL.
+- Password fields are masked and never pre-populated with plaintext. The UI may show 'Credentials saved on this PC' without revealing the secret.
+- A 'Forget credentials' control removes the saved secret without deleting the camera profile.
+- Changing the camera address invalidates or re-confirms the credential association before reuse.
+- Credentials must not appear in command-line arguments, process titles, logs, crash reports, diagnostic exports, screenshots, clipboard operations, ordinary backups, JSON/KML exports, GitHub Actions, or source control.
+- Failed authentication must not dump server responses containing secrets. Diagnostics redact usernames when practical and never include passwords/tokens.
+- Credentials are scoped to the current Windows user. Atlas must not claim the same secret automatically follows the profile to another PC. Profile transfer requires re-entry unless a future separately designed protected migration mechanism exists.
+- The app must not silently retry a rejected password indefinitely. Repeated failures should stop and ask the user to update credentials.
+- Remote Watch must not forward stored credentials to a different hostname/IP returned by a redirect or device response without explicit host validation.
+
+This credential-storage design is approved as owner preference but is NOT yet implemented. Do not request the owner's actual camera password in chat or commit any test secret to GitHub. Test credentials must be temporary synthetic values on disposable test systems.
+
 ## Standards-based compatibility targets
 
-- ONVIF media capability/profile queries for the single entered device: retrieve supported stream/snapshot URIs where offered. Target suitable Profile T operations and evaluate needed legacy compatibility. This is an implementation target, not a claim that Atlas is ONVIF-conformant or certified.
+- ONVIF media capability/profile queries for the single entered device: retrieve supported stream/snapshot URIs where offered. Automatic mode tries ONVIF first for the exact saved device only, then offers RTSP/manual fallback when needed. This is an implementation target, not a claim that Atlas is ONVIF-conformant or certified.
 - Direct RTSP video input with H.264 as an initial decoder target. Qualify transports, authentication and codecs explicitly. H.265/other codecs, RTSPS/SRTP and vendor-specific behavior need their own implementation and tests; do not mark them supported merely because an address is accepted.
 - Explicit HTTP(S) JPEG snapshot endpoints and MJPEG streams where implemented and verified. Keep periodically refreshed JPEG stills distinct from continuous video.
 - PTZ, audio, device telemetry, recording and retrieval of device-side recordings only when both camera and Atlas adapter support and have tested them. Controls for absent functions stay unavailable with a reason.
@@ -50,7 +69,7 @@ Show friendly name, linked site/mission, last contact, capture time if supplied,
 
 Battery, signal, storage, solar input and other telemetry appear only when actually reported. Otherwise show 'Not reported'. Before saving media, confirm the destination site. A linked site's coordinates must not be written as measured camera GPS. Keep device addresses, locations and media private by default.
 
-Credentials must stay separate from research records and ordinary settings/export files. Evaluate Windows-protected local credential storage; do not claim it exists before implementation. Never place credentials or tokenized URLs in GitHub, logs, previews, command-line process arguments, shared exports or chat. Redact endpoint secrets from diagnostics. No credentials are requested from the owner at this stage.
+Credentials must stay separate from research records and ordinary settings/export files. The chosen design is one-time entry followed by Windows-protected reuse on the same Windows user account. Never place credentials or tokenized URLs in GitHub, logs, previews, command-line process arguments, shared exports or chat. Redact endpoint secrets from diagnostics.
 
 Camera activation, camera audio, microphone/talkback and recording require separate deliberate controls. Audio and microphone off by default; a visible recording indicator and tested stop/disconnect are required before recording ships. No covert capture or internet/LAN scanning. Use only owned or expressly authorized devices and respect placement/recording rights.
 
@@ -58,11 +77,11 @@ Do not turn the fixed-source public camera adapter into an unrestricted URL prox
 
 ## Release gates
 
-Implement the saved-profile UI, protected credential handling and narrowly scoped transport. Qualify supported protocols/codecs, consent, image/video decoding, interruptions, local media saves, wrong-password behavior, unsupported devices and revoked credentials. Test a real supported device on the authorized personal Windows computer, with a separate remote-route test. One successful camera is not proof of compatibility with all models.
+Implement the saved-profile UI, Windows-protected credential handling and narrowly scoped transport. Qualify supported protocols/codecs, consent, image/video decoding, interruptions, local media saves, wrong-password behavior, unsupported devices, credential removal and changed-address behavior. Test a real supported device on the authorized personal Windows computer, with a separate remote-route test. One successful camera is not proof of compatibility with all models.
 
 Update privacy disclosures, Store declarations, ratings and feature claims to exactly match delivered functions. No claims of full ONVIF conformance, remote recording or universal IP-camera support without evidence. The existing certified package remains separate from this design.
 
-This commit updates scope documentation only. No runtime code, decoder, installer, Store submission, publishing hold, billing, network settings or camera/microphone permissions have changed. No tests were rerun. Do not describe the IP-camera connection as working yet.
+This commit updates scope documentation only. No runtime credential vault, decoder, installer, Store submission, publishing hold, billing, network settings or camera/microphone permissions have changed. No tests were rerun. Do not describe secure saved camera credentials or IP-camera playback as working yet.
 
 ## Primary technical references reviewed 2026-09-09
 
