@@ -27,13 +27,16 @@ function xml(v,max=256){if(typeof v!=='string'||!v.trim()||v.length>max)throw Er
 function getCapabilitiesEnvelope(){return soapEnvelope('http://www.onvif.org/ver10/device/wsdl/GetCapabilities','<tds:GetCapabilities xmlns:tds="http://www.onvif.org/ver10/device/wsdl"><tds:Category>Media</tds:Category></tds:GetCapabilities>');}
 function getProfilesEnvelope(){return soapEnvelope('http://www.onvif.org/ver10/media/wsdl/GetProfiles','<trt:GetProfiles xmlns:trt="http://www.onvif.org/ver10/media/wsdl"/>');}
 function getStreamUriEnvelope(profileToken){const token=xml(profileToken);return soapEnvelope('http://www.onvif.org/ver10/media/wsdl/GetStreamUri','<trt:GetStreamUri xmlns:trt="http://www.onvif.org/ver10/media/wsdl"><trt:StreamSetup><tt:Stream xmlns:tt="http://www.onvif.org/ver10/schema">RTP-Unicast</tt:Stream><tt:Transport xmlns:tt="http://www.onvif.org/ver10/schema"><tt:Protocol>RTSP</tt:Protocol></tt:Transport></trt:StreamSetup><trt:ProfileToken>'+token+'</trt:ProfileToken></trt:GetStreamUri>');}
-function validateAdvertisedUri(uri,expectedHost){
- if(typeof uri!=='string'||uri.length>2048)throw Error('Invalid advertised media URI.');let u;try{u=new URL(uri);}catch{throw Error('Invalid advertised media URI.');}
- if(!['rtsp:','rtsps:','http:','https:'].includes(u.protocol))throw Error('Unsupported advertised media URI scheme.');
- if(u.username||u.password)throw Error('Credential-bearing media URIs are not accepted.');
- const host=cleanHost(expectedHost);if(u.hostname.toLowerCase()!==host.replace(/^\[|\]$/g,''))throw Error('Advertised media URI points to a different host.');
- if(u.search||u.hash)throw Error('Advertised media URI query and fragment data are not accepted.');
- return Object.freeze({scheme:u.protocol.slice(0,-1),host:u.hostname,port:u.port?Number(u.port):null,path:u.pathname});
+function advertised(uri,expectedHost,protocols,label){
+ if(typeof uri!=='string'||uri.length>2048)throw Error('Invalid advertised '+label+' URI.');let u;try{u=new URL(uri);}catch{throw Error('Invalid advertised '+label+' URI.');}
+ if(!protocols.includes(u.protocol))throw Error('Unsupported advertised '+label+' URI scheme.');
+ if(u.username||u.password)throw Error('Credential-bearing '+label+' URIs are not accepted.');
+ const host=cleanHost(expectedHost);if(u.hostname.toLowerCase()!==host.replace(/^\[|\]$/g,''))throw Error('Advertised '+label+' URI points to a different host.');
+ if(u.search||u.hash)throw Error('Advertised '+label+' URI query and fragment data are not accepted.');
+ const p=u.port?Number(u.port):null;if(p!==null)port(p);const path=u.pathname||'/';if(!path.startsWith('/')||path.startsWith('//'))throw Error('Advertised '+label+' URI path is invalid.');
+ return Object.freeze({scheme:u.protocol.slice(0,-1),host:u.hostname.toLowerCase(),port:p,path,url:u.protocol+'//'+(u.hostname.includes(':')?'['+u.hostname+']':u.hostname)+(u.port?':'+u.port:'')+path});
 }
-return Object.freeze({DEFAULT_PATH,endpoint,automaticCandidates,soapEnvelope,getCapabilitiesEnvelope,getProfilesEnvelope,getStreamUriEnvelope,validateAdvertisedUri});
+function validateServiceAddress(uri,expectedHost){return advertised(uri,expectedHost,['http:','https:'],'ONVIF service');}
+function validateAdvertisedUri(uri,expectedHost){return advertised(uri,expectedHost,['rtsp:','rtsps:','http:','https:'],'media');}
+return Object.freeze({DEFAULT_PATH,endpoint,automaticCandidates,soapEnvelope,getCapabilitiesEnvelope,getProfilesEnvelope,getStreamUriEnvelope,validateServiceAddress,validateAdvertisedUri});
 });
