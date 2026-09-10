@@ -1,4 +1,4 @@
-"""Integrate bundled metadata editor, not camera transport. Does not install or publish."""
+"""Integrate bundled metadata editor and guided camera setup UI, not camera transport. Does not install or publish."""
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 def edit(name,fn):
@@ -9,8 +9,8 @@ def once(s,a,b):
  return s.replace(a,b,1)
 for p in ['app/index.html','app/workspace-preview.html']:
  def entry(s):
-  s=once(s,'<link rel="stylesheet" href="src/ui-refinement.css">','<link rel="stylesheet" href="src/ui-refinement.css"><link rel="stylesheet" href="src/field-cameras.css">')
-  return once(s,'<script src="src/ui-directions.js"></script>','<script src="src/field-cameras.js"></script><script src="src/field-camera-desk.js"></script><script src="src/ui-directions.js"></script>')
+  s=once(s,'<link rel="stylesheet" href="src/ui-refinement.css">','<link rel="stylesheet" href="src/ui-refinement.css"><link rel="stylesheet" href="src/field-cameras.css"><link rel="stylesheet" href="src/field-camera-ux.css">')
+  return once(s,'<script src="src/ui-directions.js"></script>','<script src="src/field-cameras.js"></script><script src="src/field-camera-desk.js"></script><script src="src/field-camera-ux.js"></script><script src="src/ui-directions.js"></script>')
  edit(p,entry)
 def app(s):
  s=once(s,'const appearancePreferences=','const fieldCameraProfiles=AtlasFieldCameras.store(()=>state.settings.fieldCameras,v=>{if(v===undefined)delete state.settings.fieldCameras;else state.settings.fieldCameras=v;},flush,()=>window.dispatchEvent(new Event("atlas:field-cameras-changed")));\nconst appearancePreferences=')
@@ -20,6 +20,6 @@ def app(s):
  s=s.replace('Local records refreshed. No online feeds are connected.','Local records refreshed. Live data connections are controlled separately.')
  return s
 edit('app/src/app.js',app)
-edit('native/AtlasHost.cs',lambda s:once(s,'rel == "src/ui-refinement.css" ||','rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" ||'))
-edit('build/Build-Store.ps1',lambda s:once(s,"'src/ui-refinement.css'","'src/ui-refinement.css','src/field-cameras.js','src/field-camera-desk.js','src/field-cameras.css'"))
-print('Integrated private camera metadata editor. No camera transport, credentials, or new remote endpoint.')
+edit('native/AtlasHost.cs',lambda s:once(s,'rel == "src/ui-refinement.css" ||','rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/field-camera-ux.js" || rel == "src/field-camera-ux.css" ||'))
+edit('build/Build-Store.ps1',lambda s:once(s,"'src/ui-refinement.css'","'src/ui-refinement.css','src/field-cameras.js','src/field-camera-desk.js','src/field-cameras.css','src/field-camera-ux.js','src/field-camera-ux.css'"))
+print('Integrated private camera metadata editor and guided setup journey. No camera transport, credentials, or new remote endpoint.')
