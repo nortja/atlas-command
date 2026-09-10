@@ -24,7 +24,8 @@ def main():
    page.locator('#appearanceBtn').click();page.locator('[data-appearance=expedition]').click();expect(page.locator('#appearanceSaveStatus')).to_contain_text('Saved locally');page.locator('#appearanceClose').click()
    before=page.evaluate(invariant)
    def open_desk():page.locator('#cameraDeskBtn').click();page.locator('#fieldCameraOpen').click();expect(page.locator('#fieldCameraDesk')).to_be_visible()
-   def save():page.locator('#fieldSave').click();expect(page.locator('#fieldMessage')).to_contain_text('Saved locally.')
+   def save():
+    page.locator('#fieldSave').click();expect(page.locator('#fieldForm')).to_have_count(0);expect(page.locator('#fieldEdit')).to_be_visible()
    open_desk();expect(page.locator('#fieldCount')).to_have_text('0 saved profiles');assert not external
    passed('Private metadata desk opens without activating a camera or making external requests')
    page.locator('#fieldAdd').click();page.locator('#fieldSave').click();expect(page.locator('#fieldFormError')).to_contain_text('required')
