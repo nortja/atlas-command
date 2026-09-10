@@ -1,26 +1,29 @@
 # Optional My Field Camera module
 
 Owner: Jaison Norton. Updated 2026-09-09.
-Status: consolidated release design; NOT implemented as a private IP/field-camera player. The existing public USGS snapshot adapter does not connect to the owner's hardware.
+Status: consolidated release design; NOT implemented as a private IP/field-camera player. The existing public USGS snapshot adapter does not connect to privately owned hardware.
 
 ## Owner direction
 
 Original request: 'I would also like to add a field camera if needed.'
 Usage: 'Probably both' on site and watching a remotely deployed camera from home.
 Latest camera architecture clarification: owner wants broad standards-based camera support through manually entered IP address/hostname rather than one-brand-only support.
+Latest hardware clarification: owner does not currently own a camera and expects to use a generic standards-based IP camera rather than targeting a specific make/model first.
 Latest credential preference: owner wants camera credentials entered once and then saved securely for reuse on the same Windows user account.
 Latest live-view preference: after a successful connection test, Atlas should NOT automatically open the camera stream. Show an explicit 'Open live view' button instead. When opened, live view should stay in a large workspace panel while the globe and selected-site information remain visible. Provide an optional larger expanded view on demand.
-Latest layout preference: remember each camera's last live-view panel size and position, with a clean default layout available as a reset/fallback.
+Latest layout preference: remember each camera's last live-view panel size and position, with a clean default layout available as a reset/fallback; always reopen in the normal workspace view for consistency rather than remembering expanded mode.
 
-Design for manually adding authorized cameras by IP address, without a single-brand restriction. Do not require a model-specific catalog entry for every supported standards-based camera. Do not interpret this as universal camera compatibility, permission to connect now, or authorization to purchase equipment or services. Hardware model remains useful for the first actual compatibility test, not as an architectural restriction.
+Design for manually adding authorized cameras by IP address, without a single-brand restriction. Do not require a model-specific catalog entry for every supported standards-based camera. Do not interpret this as universal camera compatibility, permission to connect now, or authorization to purchase equipment or services.
+
+Because there is no first owned device to optimize around, the first compatibility target is intentionally vendor-neutral: prefer cameras that advertise standards-based ONVIF media services and expose RTSP H.264. Atlas should discover and use capabilities advertised by the exact user-entered device, then fall back to explicit manual stream settings when standards discovery is unavailable or incomplete. Vendor-specific path guessing remains out of scope.
 
 ## Add by IP workflow — planned, not delivered
 
-My Field Camera > Add camera > IP address/hostname > Test connection > Choose stream > Open live view.
+My Field Camera > Add camera > IP address/hostname > Secure sign-in > Test camera > Choose stream when needed > Open live view.
 
 Simple fields: friendly name, IP address or hostname, connection mode (On Site / Remote Watch), connection method, username and a separately entered masked password. Advanced fields expose ONVIF service port/path, RTSP port/path, channel/stream profile, supported transport/codec options and snapshot endpoint. Avoid implying that web UI, ONVIF service and RTSP streaming share one port.
 
-The IP address identifies the endpoint; it is not necessarily the full stream address. Support a manually supplied stream path/URL when the camera cannot supply it through a supported ONVIF media service. Do not guess a brand's path, bypass authentication, or probe unrelated addresses.
+The IP address identifies the endpoint; it is not necessarily the full stream address. Support a manually supplied stream path when the camera cannot supply it through a supported ONVIF media service. Do not guess a brand's path, bypass authentication, or probe unrelated addresses.
 
 Test connection must be a deliberate action to the entered endpoint. Distinguish address/route failure, authentication failure, unsupported protocol/codec, certificate validation failure, and successful decoded video or snapshot. A response to ping, HTTP or authentication alone is not proof of live playback. After a successful test, show an 'Open live view' button. Do not auto-start video merely because the camera passed the test. Reconnecting a saved camera is a separate deliberate action; saving a profile does not activate it on future app starts.
 
@@ -40,14 +43,16 @@ Implementation target:
 - The app must not silently retry a rejected password indefinitely. Repeated failures should stop and ask the user to update credentials.
 - Remote Watch must not forward stored credentials to a different hostname/IP returned by a redirect or device response without explicit host validation.
 
-This credential-storage design is approved as owner preference but is NOT yet implemented. Do not request the owner's actual camera password in chat or commit any test secret to GitHub. Test credentials must be temporary synthetic values on disposable test systems.
+This credential-storage design is approved as owner preference but still requires clean runtime validation before it can be described as release-ready. Do not request the owner's actual camera password in chat or commit any test secret to GitHub. Test credentials must be temporary synthetic values on disposable test systems.
 
 ## Standards-based compatibility targets
 
 - ONVIF media capability/profile queries for the single entered device: retrieve supported stream/snapshot URIs where offered. Automatic mode tries ONVIF first for the exact saved device only, then offers RTSP/manual fallback when needed. This is an implementation target, not a claim that Atlas is ONVIF-conformant or certified.
-- Direct RTSP video input with H.264 as an initial decoder target. Qualify transports, authentication and codecs explicitly. H.265/other codecs, RTSPS/SRTP and vendor-specific behavior need their own implementation and tests; do not mark them supported merely because an address is accepted.
+- Direct RTSP video input with H.264 as the initial generic decoder target. Qualify transports, authentication and codecs explicitly. H.265/other codecs, RTSPS/SRTP and vendor-specific behavior need their own implementation and tests; do not mark them supported merely because an address is accepted.
 - Explicit HTTP(S) JPEG snapshot endpoints and MJPEG streams where implemented and verified. Keep periodically refreshed JPEG stills distinct from continuous video.
 - PTZ, audio, device telemetry, recording and retrieval of device-side recordings only when both camera and Atlas adapter support and have tested them. Controls for absent functions stay unavailable with a reason.
+
+Recommended generic camera baseline for future owner purchase/testing: ONVIF Profile T or compatible media-service support, RTSP H.264 main/sub stream, local LAN access without a mandatory cloud relay, documented local credentials, and optional HTTPS/snapshot support. Treat this as a compatibility preference, not a purchasing endorsement of any brand.
 
 Broad compatibility means compatible interfaces, codecs and authentication across brands, not every camera with an IP address. Cameras limited to proprietary provider services may need a supported provider integration and may not work by IP alone. No brand or subscription has been selected.
 
@@ -67,11 +72,11 @@ Remote Watch is a user-opened viewing session. Do not claim the desktop app reco
 
 Retain B — Expedition: warm charcoal, brass accents, editorial camera/site headings, modern controls and aligned readings. Use On Site / Remote Watch tabs, a prominent preview, optional saved-camera selector and compact controls. Public Cameras and My Field Camera remain separately identified.
 
-Camera setup should follow a smooth guided four-step journey: 1) Details, 2) Secure sign-in, 3) Test camera, 4) Preview. After step 3 succeeds, present a clear primary 'Open live view' button. Do not automatically start streaming.
+Camera setup should follow a smooth guided four-step journey: 1) Details, 2) Secure sign-in, 3) Test camera, 4) Open live view. After step 3 succeeds, present a clear primary 'Open live view' button. Do not automatically start streaming.
 
 Default live-view layout: open the camera inside a large resizable workspace panel, not a modal takeover. Keep the globe visible and interactive, and keep the selected-site dossier visible at the same time. Preserve camera name, location, linked site, stream status, last-contact/frame freshness and key controls around the preview. The camera panel may temporarily reduce less-important secondary panels, but it must not hide the globe or selected-site context by default.
 
-Per-camera layout memory: after the user moves or resizes a live-view panel, save that panel geometry for that specific camera profile and relevant viewport class (laptop/desktop/ultrawide). Reopening that camera should restore its last valid size and position. Clamp restored geometry to the current usable workspace so panels cannot reopen off-screen after monitor changes, resolution changes, docking, or window resizing. Never let remembered geometry cover required close/stop controls. Provide a simple 'Reset camera layout' action that returns the active camera to the clean default panel placement without deleting the camera profile or credentials.
+Per-camera layout memory: after the user moves or resizes a live-view panel, save that panel geometry for that specific camera profile and relevant viewport class (laptop/desktop/ultrawide). Reopening that camera should restore its last valid size and position. Clamp restored geometry to the current usable workspace so panels cannot reopen off-screen after monitor changes, resolution changes, docking, or window resizing. Never let remembered geometry cover required close/stop controls. Provide a simple 'Reset camera layout' action that returns the active camera to the clean default panel placement without deleting the camera profile or credentials. Always reopen in normal view; expanded state is intentionally not remembered.
 
 Expanded live view: provide a deliberate 'Expand' / 'Larger view' control. Expanded mode may occupy most of the Atlas workspace but should still preserve a compact way to see the selected-site identity and return to the normal command-center layout. It is not an automatic fullscreen mode. A separate true fullscreen option can be evaluated later if useful.
 
@@ -89,11 +94,11 @@ Do not turn the fixed-source public camera adapter into an unrestricted URL prox
 
 ## Release gates
 
-Implement the saved-profile UI, Windows-protected credential handling and narrowly scoped transport. Qualify supported protocols/codecs, consent, image/video decoding, interruptions, local media saves, wrong-password behavior, unsupported devices, credential removal and changed-address behavior. Test a real supported device on the authorized personal Windows computer, with a separate remote-route test. One successful camera is not proof of compatibility with all models.
+Implement the saved-profile UI, Windows-protected credential handling and narrowly scoped transport. Qualify supported protocols/codecs, consent, image/video decoding, interruptions, local media saves, wrong-password behavior, unsupported devices, credential removal and changed-address behavior. Because there is no owner camera yet, automated/synthetic ONVIF and transport tests can advance development, but final compatibility acceptance still requires a real authorized standards-based camera before claiming hardware support.
 
 Update privacy disclosures, Store declarations, ratings and feature claims to exactly match delivered functions. No claims of full ONVIF conformance, remote recording or universal IP-camera support without evidence. The existing certified package remains separate from this design.
 
-This commit updates scope documentation only. No runtime credential vault, decoder, installer, Store submission, publishing hold, billing, network settings or camera/microphone permissions have changed. No tests were rerun. Do not describe secure saved camera credentials or IP-camera playback as working yet.
+This commit updates scope documentation only. No new camera transport, decoder, installer, Store submission, publishing hold, billing, network settings or camera/microphone permissions have changed.
 
 ## Primary technical references reviewed 2026-09-09
 
