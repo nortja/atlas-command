@@ -3,7 +3,7 @@ name: Validate private IP camera profiles
 on:
   push:
     branches: ['develop/ui-directions']
-    paths: ['.github/workflows/field-camera-profiles.yml','build/integrate_field_cameras.py','build/integrate_field_camera_route_test.py','app/src/field-cameras.js','app/src/field-camera-desk.js','app/src/field-cameras.css','app/src/field-camera-ux.js','app/src/field-camera-ux.css','app/src/field-camera-auth.js','app/src/field-camera-test.js','app/src/field-camera-recordings.js','app/src/field-camera-diagnostics.js','app/src/field-camera-onvif.js','app/src/field-camera-onvif-parser.js','app/src/field-camera-transport.js','app/src/field-camera-layout.js','tests/field-cameras.test.cjs','tests/field-camera-autosetup.test.cjs','tests/field-camera-credentials.test.cjs','tests/field-camera-test-ui.test.cjs','tests/field-camera-recordings.test.cjs','tests/field-camera-diagnostics.test.cjs','tests/field-camera-onvif.test.cjs','tests/field-camera-onvif-parser.test.cjs','tests/field-camera-transport.test.cjs','tests/field-camera-native-route.test.cjs','tests/field-camera-layout.test.cjs','tests/field_cameras_ui.py','tests/field_camera_route_native.py']
+    paths: ['.github/workflows/field-camera-profiles.yml','build/integrate_field_cameras.py','build/integrate_field_camera_route_test.py','build/integrate_field_camera_onvif_service.py','app/src/field-cameras.js','app/src/field-camera-desk.js','app/src/field-cameras.css','app/src/field-camera-ux.js','app/src/field-camera-ux.css','app/src/field-camera-auth.js','app/src/field-camera-test.js','app/src/field-camera-recordings.js','app/src/field-camera-diagnostics.js','app/src/field-camera-onvif.js','app/src/field-camera-onvif-parser.js','app/src/field-camera-transport.js','app/src/field-camera-layout.js','tests/field-cameras.test.cjs','tests/field-camera-autosetup.test.cjs','tests/field-camera-credentials.test.cjs','tests/field-camera-test-ui.test.cjs','tests/field-camera-recordings.test.cjs','tests/field-camera-diagnostics.test.cjs','tests/field-camera-onvif.test.cjs','tests/field-camera-onvif-parser.test.cjs','tests/field-camera-onvif-service.test.cjs','tests/field-camera-transport.test.cjs','tests/field-camera-native-route.test.cjs','tests/field-camera-layout.test.cjs','tests/field_cameras_ui.py','tests/field_camera_route_native.py','tests/field_camera_onvif_native.py']
 permissions:
   contents: write
 concurrency:
@@ -29,6 +29,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Camera profile integration failed.' }
           python build/integrate_field_camera_route_test.py
           if ($LASTEXITCODE -ne 0) { throw 'Camera route-test integration failed.' }
+          python build/integrate_field_camera_onvif_service.py
+          if ($LASTEXITCODE -ne 0) { throw 'Camera ONVIF-service integration failed.' }
           node --check app/src/field-cameras.js
           if ($LASTEXITCODE -ne 0) { throw 'Camera model syntax failed.' }
           node --check app/src/field-camera-desk.js
@@ -98,6 +100,11 @@ jobs:
         run: |
           python tests/field_camera_route_native.py
           if ($LASTEXITCODE -ne 0) { throw 'Native exact-endpoint camera route test failed.' }
+      - name: Verify ONVIF service transport with synthetic same-host fixture
+        shell: pwsh
+        run: |
+          python tests/field_camera_onvif_native.py
+          if ($LASTEXITCODE -ne 0) { throw 'Native ONVIF camera service transport failed.' }
       - name: Commit tested integrated development files when branch is still current
         shell: pwsh
         env:
@@ -114,7 +121,7 @@ jobs:
           $skipped = $false
           & git diff --cached --quiet
           if ($LASTEXITCODE -eq 1) {
-            git -c user.name='Atlas development automation' -c user.email='atlas-dev@users.noreply.github.com' commit -m 'Integrate tested private IP camera route testing'
+            git -c user.name='Atlas development automation' -c user.email='atlas-dev@users.noreply.github.com' commit -m 'Integrate tested private IP camera network stages'
             if ($LASTEXITCODE -ne 0) { throw 'Development commit failed.' }
             $candidate = (git rev-parse HEAD).Trim()
             $encoded = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('x-access-token:' + $env:GH_TOKEN))
@@ -125,6 +132,7 @@ jobs:
               $skipped = $true
               $materialized = ''
               Write-Warning 'Development branch advanced during validation. Tested generated files were not force-pushed; a later validation will materialize the newer branch safely.'
+              $global:LASTEXITCODE = 0
             }
           }
           $report = Get-Content field-camera-output/FIELD-CAMERA-RESULTS.json -Raw | ConvertFrom-Json
@@ -149,4 +157,4 @@ jobs:
         shell: pwsh
         run: |
           if ($env:ATLAS_SMOKE_STAGE -and (Test-Path -LiteralPath $env:ATLAS_SMOKE_STAGE)) { Remove-Item -LiteralPath $env:ATLAS_SMOKE_STAGE -Recurse -Force }
-# No installer distribution, Store action, endpoint exception, or broad token permissions.
+# No Store action, endpoint exception, broad token permissions, or automatic installation on the owner's computer.
