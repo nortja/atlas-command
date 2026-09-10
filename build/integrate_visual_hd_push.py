@@ -79,3 +79,4 @@ def native_smoke(s):
 edit('tests/windows_native_smoke.py',native_smoke)
 
 print('Integrated always-open seven-day weather ribbon, physical Earth reference detail, stronger current flow, catalog revision 3 expansion, and bounded native preview retry.')
+# Validation tag: HD owner-preview run after bounded loopback reset hardening.
