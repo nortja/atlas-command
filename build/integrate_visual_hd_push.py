@@ -47,11 +47,15 @@ def globe(s):
   anchor="if(this.appearance&&W>=950){const focus=document.body.classList.contains('globe-focus');this.cy=H*(focus?.54:.66);this.radius=Math.min(H*(focus?.40:H<650?.265:H<1000?.29:.33),W*.248)*this.zoom;}"
   add=anchor+"\n  if(this.options.photoEarth&&W>=950){const focus=document.body.classList.contains('globe-focus');this.cy=H*(focus?.53:.65);this.radius=Math.min(H*(focus?.445:H<650?.315:H<1000?.37:.405),W*.30)*this.zoom;}"
   s=repl(s,anchor,add)
- if 'if(!this.options.photoEarth){const sphere=' not in s:
-  start=s.find('const sphere=ctx.createRadialGradient')
-  end=s.find('if(this.options.atmosphere)',start)
-  if start<0 or end<0:raise RuntimeError('Could not locate globe basemap block.')
-  s=s[:start]+'if(!this.options.photoEarth){'+s[start:end]+'}'+s[end:]
+ # Fade the bundled instrument basemap rather than removing a large draw block.
+ # This keeps the renderer syntactically simple and provides a full offline fallback until the photo mosaic is ready.
+ marker='const sphere=ctx.createRadialGradient'
+ if 'ctx.save();ctx.globalAlpha=this.options.photoEarth?.12:1;const sphere=ctx.createRadialGradient' not in s:
+  if s.count(marker)!=1:raise RuntimeError('Could not locate globe basemap start.')
+  s=s.replace(marker,'ctx.save();ctx.globalAlpha=this.options.photoEarth?.12:1;'+marker,1)
+  atmosphere='  if(this.options.atmosphere)'
+  if s.count(atmosphere)!=1:raise RuntimeError('Could not locate globe atmosphere boundary.')
+  s=s.replace(atmosphere,'  ctx.restore();\n'+atmosphere,1)
  return s
 edit('app/src/globe.js',globe)
 
@@ -92,4 +96,4 @@ def native_smoke(s):
  return repl(s,old,new)
 edit('tests/windows_native_smoke.py',native_smoke)
 
-print('Integrated compact weather ribbon, photographic NASA Earth presentation, larger globe, stronger current flow, catalog revision 3 expansion, and bounded native preview retry.')
+print('Integrated compact weather ribbon, deferred photographic NASA Earth presentation with offline fallback, larger globe, stronger current flow, catalog revision 3 expansion, and bounded native preview retry.')
