@@ -4,7 +4,7 @@
 'use strict';
 const MAX_PROFILES=200;
 const MODES=Object.freeze({local:'On site / local network',remote:'Remote / private route',both:'Both'});
-const METHODS=Object.freeze({undecided:'Choose later',onvif:'ONVIF service',rtsp:'RTSP stream',rtsps:'RTSPS stream','https-jpeg':'HTTPS snapshot','http-jpeg':'HTTP snapshot',mjpeg:'MJPEG stream'});
+const METHODS=Object.freeze({undecided:'Automatic · try ONVIF first',onvif:'ONVIF service',rtsp:'RTSP stream',rtsps:'RTSPS stream','https-jpeg':'HTTPS snapshot','http-jpeg':'HTTP snapshot',mjpeg:'MJPEG stream'});
 const STATES=Object.freeze({planned:'Planned placement',deployed:'Placed in the field',stored:'Stored / not deployed'});
 const copy=v=>structuredClone(v);
 function text(value,label,max=200,required=false){
@@ -36,20 +36,38 @@ function normalize(raw){
  const siteId=text(raw.siteId,'Linked site identifier',200);
  return {id,name:text(raw.name,'Camera name',100,true),host:address(raw.host),mode:choice(raw.mode,MODES,'connection mode','local'),method:choice(raw.method,METHODS,'connection method','undecided'),port:optionalNumber(raw.port,'Port',1,65535,true),path:endpointPath(raw.path),location:text(raw.location,'Location label',160),locality:text(raw.locality,'Town / locality',100),region:text(raw.region,'State / region',100),country:text(raw.country,'Country',100),lat,lon,locationSource:lat===null?'not-specified':'user-reference',siteId,description:text(raw.description,'Description',2000),placement:text(raw.placement,'Mounting / access notes',1500),facing:optionalNumber(raw.facing,'Facing direction',0,359.9),makeModel:text(raw.makeModel,'Make / model',160),deployment:choice(raw.deployment,STATES,'placement status','planned'),installedOn:isoDate(raw.installedOn),tags:[...new Set(tags.map(t=>text(t,'Tag',32)).filter(Boolean))]};
 }
+function connectionPlan(raw){
+ const p=normalize(raw),remote=p.mode==='remote'||p.mode==='both',steps=[];
+ const add=(id,label,detail,state='planned')=>steps.push(Object.freeze({id,label,detail,state}));
+ if(p.method==='undecided'){
+  add('onvif','Try ONVIF on this camera only','Check the exact saved host for an ONVIF service. Start with the saved port when present; otherwise use only normal HTTP/HTTPS service endpoints before asking for a device-specific port.');
+  add('onvif-capabilities','Read advertised camera capabilities','If ONVIF responds, request supported media profiles and snapshot/stream URIs. Do not guess unsupported features.');
+  add('rtsp-fallback','Offer RTSP/manual fallback','If ONVIF is unavailable or incomplete, ask for the camera stream port/path or let the user choose RTSP, RTSPS, MJPEG, or snapshot setup manually.');
+ } else if(p.method==='onvif'){
+  add('onvif','Use ONVIF setup','Contact only the saved camera endpoint and request supported capabilities.');
+  add('rtsp-fallback','Offer manual stream fallback','If ONVIF does not expose playable media, offer a user-entered RTSP/RTSPS/MJPEG/snapshot configuration.');
+ } else {
+  add('manual','Use the saved manual method',METHODS[p.method]+(p.port!==null?' on port '+p.port:'; a device-specific port is still needed')+(p.path?' with the saved path':'')+'.');
+ }
+ add('auth','Authenticate only when required','Use only credentials entered by the owner and stored in the future secure credential store. Never guess credentials or place them in camera profile notes.','blocked');
+ add('decode','Verify actual media','A connection is successful only after Atlas decodes a real video frame or snapshot from this camera. Reachability alone is not playback.','blocked');
+ if(remote)add('route','Verify the private remote route','Remote Watch requires the saved camera to be reachable through an authorized VPN/private route or supported secure provider connection.','needs-test');
+ return Object.freeze({mode:p.method==='undecided'?'auto-onvif-first':'manual-or-explicit',host:p.host,steps:Object.freeze(steps),scansNetwork:false,guessesCredentials:false});
+}
 function readiness(raw){
- const p=normalize(raw),remote=p.mode==='remote'||p.mode==='both',hasLocation=Boolean(p.location||p.locality||p.region||p.country),hasPurpose=Boolean(p.description||p.siteId),methodChosen=p.method!=='undecided',hasPort=p.port!==null;
+ const p=normalize(raw),remote=p.mode==='remote'||p.mode==='both',hasLocation=Boolean(p.location||p.locality||p.region||p.country),hasPurpose=Boolean(p.description||p.siteId),auto=p.method==='undecided',methodChosen=true,hasPort=p.port!==null;
  const checks=[
   {id:'identity',label:'Camera identity',state:'ready',detail:p.name+' · '+p.host},
   {id:'location',label:'Location context',state:hasLocation?'ready':'optional',detail:hasLocation?'Location details saved':'Optional: add a location label, locality, region, or country'},
   {id:'purpose',label:'Research context',state:hasPurpose?'ready':'optional',detail:hasPurpose?'Description or linked site saved':'Optional: describe what the camera overlooks or link a research site'},
-  {id:'method',label:'Connection method',state:methodChosen?'ready':'needs-input',detail:methodChosen?METHODS[p.method]:'Choose ONVIF, RTSP/RTSPS, MJPEG, or snapshot mode'},
-  {id:'port',label:'Service / stream port',state:hasPort?'ready':'needs-input',detail:hasPort?String(p.port):'Add the camera service or stream port before a route test'},
+  {id:'method',label:'Connection setup',state:'ready',detail:auto?'Automatic: ONVIF first, then RTSP/manual fallback':METHODS[p.method]},
+  {id:'port',label:'Service / stream port',state:hasPort?'ready':auto?'optional':'needs-input',detail:hasPort?String(p.port):auto?'Optional for automatic setup; Atlas will try normal HTTP/HTTPS ONVIF endpoints on this host before asking for a device-specific port':'Add the camera service or stream port before a route test'},
   {id:'route',label:remote?'Remote private route':'Local network route',state:'needs-test',detail:remote?'Needs an authorized private route/VPN or supported secure provider test':'Needs a real reachability test from this computer'},
   {id:'credentials',label:'Camera credentials',state:'blocked',detail:'Secure credential storage and authenticated transport are not implemented yet'},
   {id:'playback',label:'Decoded camera media',state:'blocked',detail:'A reachable port will not count as working playback until video/snapshot decoding succeeds'}
  ];
- const required=checks.filter(c=>!['optional'].includes(c.state)),ready=required.filter(c=>c.state==='ready').length;
- return Object.freeze({ready,required:required.length,checks:Object.freeze(checks.map(c=>Object.freeze(c))),canRouteTest:methodChosen&&hasPort,canPlayback:false});
+ const required=checks.filter(c=>c.state!=='optional'),ready=required.filter(c=>c.state==='ready').length;
+ return Object.freeze({ready,required:required.length,checks:Object.freeze(checks.map(c=>Object.freeze(c))),canRouteTest:auto||hasPort,canPlayback:false,plan:connectionPlan(p)});
 }
 function library(raw){
  if(raw==null)return {schemaVersion:1,profiles:[]};
@@ -86,5 +104,5 @@ function search(profiles,query='',mode='all'){
  return profiles.filter(p=>(mode==='all'||p.mode===mode||p.mode==='both')&&fold([p.name,p.location,p.locality,p.region,p.country,p.host,p.description,p.makeModel,...p.tags].join(' ')).includes(q));
 }
 function shareableWorkspace(state){const value=copy(state);if(value.settings)delete value.settings.fieldCameras;return value;}
-return Object.freeze({MAX_PROFILES,MODES,METHODS,STATES,address,normalize,readiness,library,store,search,shareableWorkspace});
+return Object.freeze({MAX_PROFILES,MODES,METHODS,STATES,address,normalize,connectionPlan,readiness,library,store,search,shareableWorkspace});
 });
