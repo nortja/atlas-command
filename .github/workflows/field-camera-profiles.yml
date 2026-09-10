@@ -3,7 +3,7 @@ name: Validate private IP camera profiles
 on:
   push:
     branches: ['develop/ui-directions']
-    paths: ['.github/workflows/field-camera-profiles.yml','build/integrate_field_cameras.py','app/src/field-cameras.js','app/src/field-camera-desk.js','app/src/field-cameras.css','tests/field-cameras.test.cjs','tests/field-camera-autosetup.test.cjs','tests/field_cameras_ui.py']
+    paths: ['.github/workflows/field-camera-profiles.yml','build/integrate_field_cameras.py','app/src/field-cameras.js','app/src/field-camera-desk.js','app/src/field-cameras.css','app/src/field-camera-ux.js','app/src/field-camera-ux.css','app/src/field-camera-auth.js','tests/field-cameras.test.cjs','tests/field-camera-autosetup.test.cjs','tests/field-camera-credentials.test.cjs','tests/field_cameras_ui.py']
 permissions:
   contents: write
 concurrency:
@@ -31,6 +31,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Camera model syntax failed.' }
           node --check app/src/field-camera-desk.js
           if ($LASTEXITCODE -ne 0) { throw 'Camera desk syntax failed.' }
+          node --check app/src/field-camera-ux.js
+          if ($LASTEXITCODE -ne 0) { throw 'Camera journey syntax failed.' }
+          node --check app/src/field-camera-auth.js
+          if ($LASTEXITCODE -ne 0) { throw 'Camera sign-in syntax failed.' }
           node --check app/src/app.js
           if ($LASTEXITCODE -ne 0) { throw 'Application syntax failed.' }
           node --check app/src/live-weather.js
@@ -55,7 +59,7 @@ jobs:
           [IO.File]::WriteAllText($vs, 'using System.Reflection; [assembly: AssemblyVersion("1.1.0.0")] [assembly: AssemblyFileVersion("1.1.0.0")]', [Text.UTF8Encoding]::new($false))
           $exe = Join-Path $stage 'AtlasCommand.exe'
           $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-          $arguments = @('/nologo','/codepage:65001','/target:winexe','/platform:x64','/optimize+','/warn:4','/warnaserror+',('/out:' + $exe),('/win32manifest:' + (Join-Path $PWD 'native/WindowsApp.manifest')),('/win32icon:' + (Join-Path $PWD 'native/AtlasCommand.ico')),'/reference:System.dll,System.Core.dll,System.Web.Extensions.dll,System.Windows.Forms.dll',(Join-Path $PWD 'native/AtlasHost.cs'),(Join-Path $PWD 'native/AssemblyInfo.cs'),$vs)
+          $arguments = @('/nologo','/codepage:65001','/target:winexe','/platform:x64','/optimize+','/warn:4','/warnaserror+',('/out:' + $exe),('/win32manifest:' + (Join-Path $PWD 'native/WindowsApp.manifest')),('/win32icon:' + (Join-Path $PWD 'native/AtlasCommand.ico')),'/reference:System.dll,System.Core.dll,System.Security.dll,System.Web.Extensions.dll,System.Windows.Forms.dll',(Join-Path $PWD 'native/AtlasHost.cs'),(Join-Path $PWD 'native/AssemblyInfo.cs'),$vs)
           & $compiler @arguments
           if ($LASTEXITCODE -ne 0) { throw 'Native compilation failed.' }
           ('ATLAS_SMOKE_EXE=' + $exe) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
@@ -87,7 +91,7 @@ jobs:
           if ($unexpected.Count) { throw 'Unexpected staged file.' }
           & git diff --cached --quiet
           if ($LASTEXITCODE -eq 1) {
-            git -c user.name='Atlas development automation' -c user.email='atlas-dev@users.noreply.github.com' commit -m 'Integrate tested private IP camera profiles and sharing exclusions'
+            git -c user.name='Atlas development automation' -c user.email='atlas-dev@users.noreply.github.com' commit -m 'Integrate tested private IP camera profiles and protected sign-in'
             if ($LASTEXITCODE -ne 0) { throw 'Development commit failed.' }
             $encoded = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('x-access-token:' + $env:GH_TOKEN))
             Write-Output ('::add-mask::' + $encoded)
