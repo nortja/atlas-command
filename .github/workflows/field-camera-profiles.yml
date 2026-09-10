@@ -3,7 +3,7 @@ name: Validate private IP camera profiles
 on:
   push:
     branches: ['develop/ui-directions']
-    paths: ['.github/workflows/field-camera-profiles.yml','build/integrate_field_cameras.py','app/src/field-cameras.js','app/src/field-camera-desk.js','app/src/field-cameras.css','app/src/field-camera-ux.js','app/src/field-camera-ux.css','app/src/field-camera-auth.js','tests/field-cameras.test.cjs','tests/field-camera-autosetup.test.cjs','tests/field-camera-credentials.test.cjs','tests/field_cameras_ui.py']
+    paths: ['.github/workflows/field-camera-profiles.yml','build/integrate_field_cameras.py','app/src/field-cameras.js','app/src/field-camera-desk.js','app/src/field-cameras.css','app/src/field-camera-ux.js','app/src/field-camera-ux.css','app/src/field-camera-auth.js','app/src/field-camera-recordings.js','tests/field-cameras.test.cjs','tests/field-camera-autosetup.test.cjs','tests/field-camera-credentials.test.cjs','tests/field-camera-recordings.test.cjs','tests/field_cameras_ui.py']
 permissions:
   contents: write
 concurrency:
@@ -35,6 +35,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Camera journey syntax failed.' }
           node --check app/src/field-camera-auth.js
           if ($LASTEXITCODE -ne 0) { throw 'Camera sign-in syntax failed.' }
+          node --check app/src/field-camera-recordings.js
+          if ($LASTEXITCODE -ne 0) { throw 'Camera recording metadata syntax failed.' }
           node --check app/src/app.js
           if ($LASTEXITCODE -ne 0) { throw 'Application syntax failed.' }
           node --check app/src/live-weather.js
