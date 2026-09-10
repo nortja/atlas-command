@@ -9,10 +9,22 @@ def once(s,a,b):
  if b in s:return s
  if s.count(a)!=1:raise RuntimeError('Camera integration anchor mismatch: '+a[:90])
  return s.replace(a,b,1)
+def insert_before_once(s,anchor,items):
+ if s.count(anchor)!=1:raise RuntimeError('Camera integration anchor mismatch: '+anchor[:90])
+ missing=[x for x in items if x not in s]
+ if not missing:return s
+ return s.replace(anchor,''.join(missing)+anchor,1)
 for p in ['app/index.html','app/workspace-preview.html']:
  def entry(s):
-  s=once(s,'<link rel="stylesheet" href="src/ui-refinement.css">','<link rel="stylesheet" href="src/ui-refinement.css"><link rel="stylesheet" href="src/field-cameras.css"><link rel="stylesheet" href="src/field-camera-ux.css">')
-  return once(s,'<script src="src/ui-directions.js"></script>','<script src="src/field-cameras.js"></script><script src="src/field-camera-desk.js"></script><script src="src/field-camera-ux.js"></script><script src="src/field-camera-auth.js"></script><script src="src/ui-directions.js"></script>')
+  s=insert_before_once(s,'</head>',[
+   '<link rel="stylesheet" href="src/field-cameras.css">',
+   '<link rel="stylesheet" href="src/field-camera-ux.css">'])
+  s=insert_before_once(s,'<script src="src/ui-directions.js"></script>',[
+   '<script src="src/field-cameras.js"></script>',
+   '<script src="src/field-camera-desk.js"></script>',
+   '<script src="src/field-camera-ux.js"></script>',
+   '<script src="src/field-camera-auth.js"></script>'])
+  return s
  edit(p,entry)
 def app(s):
  s=once(s,'const appearancePreferences=','const fieldCameraProfiles=AtlasFieldCameras.store(()=>state.settings.fieldCameras,v=>{if(v===undefined)delete state.settings.fieldCameras;else state.settings.fieldCameras=v;},flush,()=>window.dispatchEvent(new Event("atlas:field-cameras-changed")));\nconst appearancePreferences=')
@@ -125,12 +137,18 @@ def native(s):
   if marker not in s: raise RuntimeError('Native credential insertion anchor missing')
   s=s.replace(marker,block+'\n'+marker,1)
  s=once(s,'if (rel.StartsWith("api/media/", StringComparison.Ordinal)) {','if (rel.StartsWith("api/field-camera-credentials/",StringComparison.Ordinal)) { if (method != "POST") { Error(stream,405,"Camera sign-in actions require an explicit local action"); return; } HandleCameraCredentials(stream,rel.Substring("api/field-camera-credentials/".Length),headers,body); return; }\n            if (rel.StartsWith("api/media/", StringComparison.Ordinal)) {')
- s=once(s,'rel == "src/ui-refinement.css" ||','rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/field-camera-ux.js" || rel == "src/field-camera-ux.css" || rel == "src/field-camera-auth.js" ||')
+ allow='rel == "src/ui-refinement.css" ||'
+ addition='rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/field-camera-ux.js" || rel == "src/field-camera-ux.css" || rel == "src/field-camera-auth.js" ||'
+ s=once(s,allow,addition)
  return s
 edit('native/AtlasHost.cs',native)
 
 def build(s):
- s=once(s,"'src/ui-refinement.css'","'src/ui-refinement.css','src/field-cameras.js','src/field-camera-desk.js','src/field-cameras.css','src/field-camera-ux.js','src/field-camera-ux.css','src/field-camera-auth.js'")
+ anchor="'src/ui-refinement.css'"
+ assets=['src/field-cameras.js','src/field-camera-desk.js','src/field-cameras.css','src/field-camera-ux.js','src/field-camera-ux.css','src/field-camera-auth.js']
+ if anchor not in s: raise RuntimeError('Build runtime allowlist anchor missing')
+ missing=[a for a in assets if ("'"+a+"'") not in s]
+ if missing:s=s.replace(anchor,anchor+','+','.join("'"+a+"'" for a in missing),1)
  s=s.replace('/reference:System.dll,System.Core.dll,System.Web.Extensions.dll,System.Windows.Forms.dll','/reference:System.dll,System.Core.dll,System.Security.dll,System.Web.Extensions.dll,System.Windows.Forms.dll')
  return s
 edit('build/Build-Store.ps1',build)
