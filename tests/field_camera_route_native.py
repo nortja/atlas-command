@@ -22,7 +22,14 @@ def private_ipv4():
 
 
 def profile_state(base,host):
-    state=json.loads(json.dumps(base))
+    # A brand-new native host legitimately has no workspace.json yet. Build the
+    # smallest schema-valid state instead of treating that as an application failure.
+    if base is None:
+        state={'schemaVersion':1,'sites':[],'settings':{}}
+    elif isinstance(base,dict):
+        state=json.loads(json.dumps(base))
+    else:
+        raise RuntimeError('Unexpected native workspace shape.')
     settings=state.setdefault('settings',{})
     settings['fieldCameras']={'schemaVersion':1,'revision':1,'profiles':[{
         'id':'cam-route-fixture','name':'Synthetic route fixture','host':host,
@@ -73,7 +80,7 @@ def main():
         assert result['reason'] in ('refused','timeout','unreachable'),result
         assert result['scanNetwork'] is False and result['credentialsUsed'] is False,result
         print('PASS: closed endpoint remains a truthful non-live failure without scanning or credentials',flush=True)
-        changed=dict(profile_state(atlas.read_state(),ip));changed['settings']['fieldCameras']['profiles'][0]['host']='192.0.2.77';atlas.save(changed)
+        changed=profile_state(atlas.read_state(),ip);changed['settings']['fieldCameras']['profiles'][0]['host']='192.0.2.77';atlas.save(changed)
         status,_,_=atlas.request('POST','api/field-camera-test/route',body=json.dumps({'profileId':'cam-route-fixture','host':ip,'port':port,'timeoutMs':1000}).encode('utf-8'),headers={'Content-Type':'application/json','X-Atlas-Request':'local'})
         assert status==400,status
         print('PASS: address changes invalidate stale route-test requests before any connection attempt',flush=True)
