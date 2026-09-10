@@ -24,7 +24,9 @@ test('ONVIF response and request sizes are bounded',()=>{
 });
 
 test('unauthenticated ONVIF stage never loads or sends saved credentials',()=>{
-  assert.doesNotMatch(s,/ReadCameraSecret|UsernameToken|Authorization: Basic|Authorization: Digest/);
+  const transport=s.slice(s.indexOf('static FieldCameraHttpResponse SendFieldCameraOnvif'),s.indexOf('static void HandleFieldCameraOnvifTest'));
+  assert.doesNotMatch(transport,/ReadCameraSecret|CameraSecret|Authorization:\s*(Basic|Digest)|UsernameToken|PasswordDigest/);
+  assert.match(s,/soapText\.IndexOf\("UsernameToken"/);
   assert.match(s,/credentialsUsed/);
   assert.match(s,/authRequired/);
 });
