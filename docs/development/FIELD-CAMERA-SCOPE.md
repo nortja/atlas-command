@@ -12,6 +12,7 @@ Latest hardware clarification: owner does not currently own a camera and expects
 Latest credential preference: owner wants camera credentials entered once and then saved securely for reuse on the same Windows user account.
 Latest live-view preference: after a successful connection test, Atlas should NOT automatically open the camera stream. Show an explicit 'Open live view' button instead. When opened, live view should stay in a large workspace panel while the globe and selected-site information remain visible. Provide an optional larger expanded view on demand.
 Latest layout preference: remember each camera's last live-view panel size and position, with a clean default layout available as a reset/fallback; always reopen in the normal workspace view for consistency rather than remembering expanded mode.
+Latest recording preference: owner wants local recording support in addition to live view and snapshots when the camera/transport is actually supported and tested.
 
 Design for manually adding authorized cameras by IP address, without a single-brand restriction. Do not require a model-specific catalog entry for every supported standards-based camera. Do not interpret this as universal camera compatibility, permission to connect now, or authorization to purchase equipment or services.
 
@@ -68,6 +69,21 @@ Offline media: import originals from a camera/memory card when available. Preser
 
 Remote Watch is a user-opened viewing session. Do not claim the desktop app records while closed or asleep. Background recording, device event alerts and overnight jobs require separate implementation and acceptance.
 
+## Recording design
+
+Recording is an approved product target, but it must remain deliberate and visible. It is not active yet.
+
+- Recording starts only from an explicit Record control while a verified live view is open.
+- Default destination is Atlas local media storage on the current PC; do not silently write to cloud services or camera-side storage.
+- Show a persistent red recording indicator, elapsed time and a clearly reachable Stop recording control.
+- Never start recording automatically on app launch, camera reconnect, motion event, or scheduled background task unless a future separately approved feature adds that behavior.
+- Keep audio off by default. If camera audio is supported, recording audio requires a separate visible user choice and must not imply talkback/microphone capture.
+- Preserve source camera profile ID, start/end timestamps, codec/container metadata actually known, and linked site/mission reference as metadata. Do not claim camera GPS or capture location unless the camera reports it or the user explicitly labels it.
+- If storage is low, stream drops, codec changes, or the app closes, stop safely and preserve the last valid recording segment when possible; never display an incomplete/corrupt file as a successful recording.
+- Recording files must be clearly separated from credentials. Credentials must never be embedded in filenames, metadata exports, logs, or media paths.
+- Initial recording target should favor passthrough/remux of a verified H.264 stream when technically safe, reducing unnecessary CPU load and quality loss. Transcoding should be a later compatibility path, not assumed.
+- Recording while Atlas is closed, Windows is sleeping, or the user is signed out is out of scope for the first finished version.
+
 ## Interface and privacy
 
 Retain B — Expedition: warm charcoal, brass accents, editorial camera/site headings, modern controls and aligned readings. Use On Site / Remote Watch tabs, a prominent preview, optional saved-camera selector and compact controls. Public Cameras and My Field Camera remain separately identified.
@@ -80,7 +96,7 @@ Per-camera layout memory: after the user moves or resizes a live-view panel, sav
 
 Expanded live view: provide a deliberate 'Expand' / 'Larger view' control. Expanded mode may occupy most of the Atlas workspace but should still preserve a compact way to see the selected-site identity and return to the normal command-center layout. It is not an automatic fullscreen mode. A separate true fullscreen option can be evaluated later if useful.
 
-The live-view controls should remain simple: Open live view, Stop live view, Expand/Restore, Mute/unmute camera audio only when supported, Snapshot only when implemented, and status. Do not crowd the default view with PTZ, recording, codec, transport or diagnostics controls; place advanced supported controls in a secondary drawer or menu.
+The live-view controls should remain simple: Open live view, Stop live view, Expand/Restore, Mute/unmute camera audio only when supported, Snapshot once implemented, Record/Stop recording once tested, and status. Do not crowd the default view with PTZ, codec, transport or diagnostics controls; place advanced supported controls in a secondary drawer or menu.
 
 Show friendly name, linked site/mission, last contact, capture time if supplied, and explicit Live video / Snapshot / Recording / Paused / Unavailable status. Connection, recording and frame freshness are separate indicators. Do not infer power or network failure solely from an old image. Never show a cached image as LIVE.
 
@@ -94,7 +110,7 @@ Do not turn the fixed-source public camera adapter into an unrestricted URL prox
 
 ## Release gates
 
-Implement the saved-profile UI, Windows-protected credential handling and narrowly scoped transport. Qualify supported protocols/codecs, consent, image/video decoding, interruptions, local media saves, wrong-password behavior, unsupported devices, credential removal and changed-address behavior. Because there is no owner camera yet, automated/synthetic ONVIF and transport tests can advance development, but final compatibility acceptance still requires a real authorized standards-based camera before claiming hardware support.
+Implement the saved-profile UI, Windows-protected credential handling and narrowly scoped transport. Qualify supported protocols/codecs, consent, image/video decoding, interruptions, local media saves, recording start/stop/recovery, wrong-password behavior, unsupported devices, credential removal and changed-address behavior. Because there is no owner camera yet, automated/synthetic ONVIF and transport tests can advance development, but final compatibility acceptance still requires a real authorized standards-based camera before claiming hardware support.
 
 Update privacy disclosures, Store declarations, ratings and feature claims to exactly match delivered functions. No claims of full ONVIF conformance, remote recording or universal IP-camera support without evidence. The existing certified package remains separate from this design.
 
