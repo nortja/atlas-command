@@ -1,5 +1,5 @@
 # Private same-day owner preview. Builds and tests only; never installs on the owner's PC or uploads to Store.
-# Validation revision: photographic globe keeps the local renderer until the optional NASA mosaic is ready.
+# Validation revision: compact weather ribbon is viewport-bounded while photographic Earth remains offline-first.
 name: Build Atlas owner preview
 on:
   push:
