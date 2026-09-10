@@ -9,7 +9,7 @@ Original request: 'I would also like to add a field camera if needed.'
 Usage: 'Probably both' on site and watching a remotely deployed camera from home.
 Latest camera architecture clarification: owner wants broad standards-based camera support through manually entered IP address/hostname rather than one-brand-only support.
 Latest credential preference: owner wants camera credentials entered once and then saved securely for reuse on the same Windows user account.
-Latest live-view preference: after a successful connection test, Atlas should NOT automatically open the camera stream. Show an explicit 'Open live view' button instead.
+Latest live-view preference: after a successful connection test, Atlas should NOT automatically open the camera stream. Show an explicit 'Open live view' button instead. When opened, live view should stay in a large workspace panel while the globe and selected-site information remain visible. Provide an optional larger expanded view on demand.
 
 Design for manually adding authorized cameras by IP address, without a single-brand restriction. Do not require a model-specific catalog entry for every supported standards-based camera. Do not interpret this as universal camera compatibility, permission to connect now, or authorization to purchase equipment or services. Hardware model remains useful for the first actual compatibility test, not as an architectural restriction.
 
@@ -66,7 +66,13 @@ Remote Watch is a user-opened viewing session. Do not claim the desktop app reco
 
 Retain B — Expedition: warm charcoal, brass accents, editorial camera/site headings, modern controls and aligned readings. Use On Site / Remote Watch tabs, a prominent preview, optional saved-camera selector and compact controls. Public Cameras and My Field Camera remain separately identified.
 
-Camera setup should follow a smooth guided four-step journey: 1) Details, 2) Secure sign-in, 3) Test camera, 4) Preview. After step 3 succeeds, present a clear primary 'Open live view' button. Do not automatically start streaming. The live-view screen should provide a prominent Stop/Close live view control and preserve the camera's name, location, status, and linked site context around the preview.
+Camera setup should follow a smooth guided four-step journey: 1) Details, 2) Secure sign-in, 3) Test camera, 4) Preview. After step 3 succeeds, present a clear primary 'Open live view' button. Do not automatically start streaming.
+
+Default live-view layout: open the camera inside a large resizable workspace panel, not a modal takeover. Keep the globe visible and interactive, and keep the selected-site dossier visible at the same time. Preserve camera name, location, linked site, stream status, last-contact/frame freshness and key controls around the preview. The camera panel may temporarily reduce less-important secondary panels, but it must not hide the globe or selected-site context by default.
+
+Expanded live view: provide a deliberate 'Expand' / 'Larger view' control. Expanded mode may occupy most of the Atlas workspace but should still preserve a compact way to see the selected-site identity and return to the normal command-center layout. It is not an automatic fullscreen mode. A separate true fullscreen option can be evaluated later if useful.
+
+The live-view controls should remain simple: Open live view, Stop live view, Expand/Restore, Mute/unmute camera audio only when supported, Snapshot only when implemented, and status. Do not crowd the default view with PTZ, recording, codec, transport or diagnostics controls; place advanced supported controls in a secondary drawer or menu.
 
 Show friendly name, linked site/mission, last contact, capture time if supplied, and explicit Live video / Snapshot / Recording / Paused / Unavailable status. Connection, recording and frame freshness are separate indicators. Do not infer power or network failure solely from an old image. Never show a cached image as LIVE.
 
