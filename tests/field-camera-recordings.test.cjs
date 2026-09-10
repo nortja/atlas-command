@@ -1,0 +1,9 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+const R=require('../app/src/field-camera-recordings.js');
+const camera={id:'cam-1',name:'River camp',host:'192.0.2.50',location:'North bank',siteId:'site-1'};
+test('recording context automatically associates the camera linked site',()=>{const c=R.createContext({camera,site:{id:'site-1',name:'Ancient crossing'},startedAt:'2026-09-10T04:00:00Z'});assert.equal(c.linkedSiteId,'site-1');assert.equal(c.linkedSiteName,'Ancient crossing');assert.equal(c.cameraId,'cam-1');assert.equal(c.status,'recording');});
+test('selected mission is preserved when recording begins',()=>{const c=R.createContext({camera,site:{id:'site-1',name:'Ancient crossing'},mission:{id:'mission-7',name:'Autumn survey'},startedAt:'2026-09-10T04:00:00Z'});assert.equal(c.missionId,'mission-7');assert.equal(c.missionName,'Autumn survey');});
+test('camera link mismatch is refused rather than silently associating wrong site',()=>{assert.throws(()=>R.createContext({camera,site:{id:'site-2',name:'Other site'},startedAt:'2026-09-10T04:00:00Z'}),/does not match/);});
+test('recording metadata contains no credentials or stream secrets',()=>{const c=R.createContext({camera:{...camera,username:'owner',password:'secret',path:'/stream?token=secret'},startedAt:'2026-09-10T04:00:00Z'});for(const key of ['username','password','path','token'])assert.ok(!(key in c));});
+test('finishing a recording preserves context and records a valid end time',()=>{const c=R.createContext({camera,startedAt:'2026-09-10T04:00:00Z'}),done=R.finish(c,'2026-09-10T04:05:00Z');assert.equal(done.status,'complete');assert.equal(done.linkedSiteId,'site-1');assert.equal(done.endedAt,'2026-09-10T04:05:00.000Z');assert.throws(()=>R.finish(c,'2026-09-10T03:59:59Z'),/precede/);});
