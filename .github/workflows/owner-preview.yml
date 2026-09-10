@@ -1,0 +1,84 @@
+# Private same-day owner preview. Builds and tests only; never installs on the owner's PC or uploads to Store.
+name: Build Atlas owner preview
+on:
+  push:
+    branches: ['develop/ui-directions']
+    paths: ['.github/workflows/owner-preview.yml','build/Build-OwnerPreview.ps1','packaging/owner-preview/**','tests/owner-preview.test.cjs','build/integrate_field_camera_onvif_service.py']
+permissions:
+  contents: read
+concurrency:
+  group: atlas-owner-preview
+  cancel-in-progress: false
+jobs:
+  build:
+    if: ${{ github.event.repository.private && github.repository == 'nortja/atlas-command' && contains(github.event.head_commit.message, '[atlas-owner-preview]') }}
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - name: Integrate development source
+        shell: pwsh
+        run: |
+          python build/integrate_release_tools.py
+          if ($LASTEXITCODE -ne 0) { throw 'Release-tool integration failed.' }
+          python build/integrate_ui_directions.py
+          if ($LASTEXITCODE -ne 0) { throw 'UI integration failed.' }
+          python build/integrate_field_cameras.py
+          if ($LASTEXITCODE -ne 0) { throw 'Camera integration failed.' }
+          python build/integrate_field_camera_route_test.py
+          if ($LASTEXITCODE -ne 0) { throw 'Camera route integration failed.' }
+          python build/integrate_field_camera_onvif_service.py
+          if ($LASTEXITCODE -ne 0) { throw 'Camera ONVIF integration failed.' }
+      - name: Run source and logic checks
+        shell: pwsh
+        run: |
+          $testFiles = @(Get-ChildItem tests/*.test.cjs | ForEach-Object { $_.FullName })
+          node --test @testFiles
+          if ($LASTEXITCODE -ne 0) { throw 'Source or logic checks failed.' }
+      - name: Build private owner preview
+        shell: pwsh
+        run: |
+          ./build/Build-OwnerPreview.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'Owner preview build failed.' }
+          $exe = (Resolve-Path 'dist/AtlasCommand-OwnerPreview/AtlasCommand.exe').Path
+          ('ATLAS_SMOKE_EXE=' + $exe) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          ('ATLAS_SMOKE_STAGE=' + (Split-Path -Parent $exe)) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Exercise native app and current UI
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir playwright==1.57.0
+          if ($LASTEXITCODE -ne 0) { throw 'Test driver setup failed.' }
+          python tests/windows_native_smoke.py
+          if ($LASTEXITCODE -ne 0) { throw 'Native smoke test failed.' }
+          python tests/next_ui_test.py
+          if ($LASTEXITCODE -ne 0) { throw 'Workspace UI test failed.' }
+          python tests/weather_units_ui.py
+          if ($LASTEXITCODE -ne 0) { throw 'Weather units test failed.' }
+          python tests/field_cameras_ui.py
+          if ($LASTEXITCODE -ne 0) { throw 'Private camera profile UI test failed.' }
+          python tests/field_camera_route_native.py
+          if ($LASTEXITCODE -ne 0) { throw 'Private camera route runtime test failed.' }
+          python tests/field_camera_onvif_native.py
+          if ($LASTEXITCODE -ne 0) { throw 'Private camera ONVIF runtime test failed.' }
+      - name: Verify owner preview artifact
+        shell: pwsh
+        run: |
+          $report = Get-Content dist/OWNER-PREVIEW-REPORT.json -Raw | ConvertFrom-Json
+          if ($report.previewType -cne 'PRIVATE_OWNER_DEVELOPMENT' -or $report.signed -ne $false -or $report.storeCertified -ne $false -or $report.adminRequired -ne $false -or $report.securityBypass -ne $false) { throw 'Owner preview report has unsafe or inaccurate release state.' }
+          $zip = Join-Path 'dist' $report.zip
+          if (-not (Test-Path -LiteralPath $zip)) { throw 'Owner preview ZIP missing.' }
+          $actual = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -cne $report.sha256) { throw 'Owner preview ZIP hash mismatch.' }
+          if (Test-Path -LiteralPath 'dist/AtlasCommand-OwnerPreview/workspace.json') { throw 'Private workspace leaked into preview.' }
+      - name: Upload private owner preview
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: atlas-owner-preview-windows-x64
+          path: |
+            dist/AtlasCommand-OwnerPreview-*-x64.zip
+            dist/OWNER-PREVIEW-REPORT.json
+          retention-days: 3
+          if-no-files-found: error
+# No signing, Store upload, public release, elevation, endpoint-security exception, or automated installation.
