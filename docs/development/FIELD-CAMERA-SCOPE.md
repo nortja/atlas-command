@@ -9,18 +9,19 @@ Original request: 'I would also like to add a field camera if needed.'
 Usage: 'Probably both' on site and watching a remotely deployed camera from home.
 Latest camera architecture clarification: owner wants broad standards-based camera support through manually entered IP address/hostname rather than one-brand-only support.
 Latest credential preference: owner wants camera credentials entered once and then saved securely for reuse on the same Windows user account.
+Latest live-view preference: after a successful connection test, Atlas should NOT automatically open the camera stream. Show an explicit 'Open live view' button instead.
 
 Design for manually adding authorized cameras by IP address, without a single-brand restriction. Do not require a model-specific catalog entry for every supported standards-based camera. Do not interpret this as universal camera compatibility, permission to connect now, or authorization to purchase equipment or services. Hardware model remains useful for the first actual compatibility test, not as an architectural restriction.
 
 ## Add by IP workflow — planned, not delivered
 
-My Field Camera > Add camera > IP address/hostname > Test connection > Choose stream > Save profile.
+My Field Camera > Add camera > IP address/hostname > Test connection > Choose stream > Open live view.
 
 Simple fields: friendly name, IP address or hostname, connection mode (On Site / Remote Watch), connection method, username and a separately entered masked password. Advanced fields expose ONVIF service port/path, RTSP port/path, channel/stream profile, supported transport/codec options and snapshot endpoint. Avoid implying that web UI, ONVIF service and RTSP streaming share one port.
 
 The IP address identifies the endpoint; it is not necessarily the full stream address. Support a manually supplied stream path/URL when the camera cannot supply it through a supported ONVIF media service. Do not guess a brand's path, bypass authentication, or probe unrelated addresses.
 
-Test connection must be a deliberate action to the entered endpoint. Distinguish address/route failure, authentication failure, unsupported protocol/codec, certificate validation failure, and successful decoded video or snapshot. A response to ping, HTTP or authentication alone is not proof of live playback. Show a preview before linking to a site/mission. Reconnecting a saved camera is a separate deliberate action; saving a profile does not activate it on future app starts.
+Test connection must be a deliberate action to the entered endpoint. Distinguish address/route failure, authentication failure, unsupported protocol/codec, certificate validation failure, and successful decoded video or snapshot. A response to ping, HTTP or authentication alone is not proof of live playback. After a successful test, show an 'Open live view' button. Do not auto-start video merely because the camera passed the test. Reconnecting a saved camera is a separate deliberate action; saving a profile does not activate it on future app starts.
 
 ## Credential storage design
 
@@ -29,7 +30,7 @@ The owner has selected 'enter once, save securely'. Credentials must therefore b
 Implementation target:
 - Store username/password secrets in a Windows-protected credential store bound to the current Windows user account. Prefer Windows Credential Manager or an equivalent Windows-protected mechanism that can be tested with the packaged Win32 app.
 - Camera profile data stores only a non-secret credential reference identifier. It must never store the password, access token or full credential-bearing URL.
-- Password fields are masked and never pre-populated with plaintext. The UI may show 'Credentials saved on this PC' without revealing the secret.
+- Password fields are masked and never pre-populated with plaintext. The UI may show the saved username plus 'Credentials saved on this PC' without revealing the secret.
 - A 'Forget credentials' control removes the saved secret without deleting the camera profile.
 - Changing the camera address invalidates or re-confirms the credential association before reuse.
 - Credentials must not appear in command-line arguments, process titles, logs, crash reports, diagnostic exports, screenshots, clipboard operations, ordinary backups, JSON/KML exports, GitHub Actions, or source control.
@@ -64,6 +65,8 @@ Remote Watch is a user-opened viewing session. Do not claim the desktop app reco
 ## Interface and privacy
 
 Retain B — Expedition: warm charcoal, brass accents, editorial camera/site headings, modern controls and aligned readings. Use On Site / Remote Watch tabs, a prominent preview, optional saved-camera selector and compact controls. Public Cameras and My Field Camera remain separately identified.
+
+Camera setup should follow a smooth guided four-step journey: 1) Details, 2) Secure sign-in, 3) Test camera, 4) Preview. After step 3 succeeds, present a clear primary 'Open live view' button. Do not automatically start streaming. The live-view screen should provide a prominent Stop/Close live view control and preserve the camera's name, location, status, and linked site context around the preview.
 
 Show friendly name, linked site/mission, last contact, capture time if supplied, and explicit Live video / Snapshot / Recording / Paused / Unavailable status. Connection, recording and frame freshness are separate indicators. Do not infer power or network failure solely from an old image. Never show a cached image as LIVE.
 
