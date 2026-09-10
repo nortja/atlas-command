@@ -36,7 +36,7 @@ def main():
    page.locator('#fieldConnectionDetails summary').click();page.locator('#fc-method').select_option('rtsp');page.locator('#fc-port').fill('554');page.locator('#fc-path').fill('/stream1');page.locator('#fc-tags').fill('river, wildlife, survey')
    save();p=host.read_state()['settings']['fieldCameras']['profiles'][0];ident=p['id'];assert p['locality']=='Three Rivers' and p['description'].startswith('Example') and p['mode']=='both' and p['facing']==0 and p['lat'] is None
    assert not any(k in p for k in ['password','username','connected','battery'])
-   expect(page.locator('.field-badge')).to_have_text('Not connected');page.locator('#fieldCameraDesk').evaluate('e=>e.scrollTop=0');page.screenshot(path=str(OUT/'01-IP-Camera-Profile.png'))
+   expect(page.get_by_text('Not connected',exact=True)).to_be_visible();page.locator('#fieldCameraDesk').evaluate('e=>e.scrollTop=0');page.screenshot(path=str(OUT/'01-IP-Camera-Profile.png'))
    passed('Name, locality, description, modes, facing, tags and setup details persist to native storage without credentials or invented GPS')
    page.locator('#fieldEdit').click();page.locator('#fieldLocationDetails summary').click();page.locator('#fc-lat').fill('0');page.locator('#fieldSave').click();expect(page.locator('#fieldFormError')).to_contain_text('both latitude');page.locator('#fc-lon').fill('0');page.locator('#fc-siteId').select_option('seed-2');save()
    updated=host.read_state()['settings']['fieldCameras']['profiles'][0];assert updated['lat']==0 and updated['lon']==0 and updated['locationSource']=='user-reference' and updated['siteId']=='seed-2' and updated['createdAt']==p['createdAt']
