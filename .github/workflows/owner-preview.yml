@@ -3,7 +3,7 @@ name: Build Atlas owner preview
 on:
   push:
     branches: ['develop/ui-directions']
-    paths: ['.github/workflows/owner-preview.yml','build/Build-OwnerPreview.ps1','packaging/owner-preview/**','tests/owner-preview.test.cjs','build/integrate_field_camera_onvif_service.py','build/integrate_windows_webcam.py','app/src/windows-webcam.js','app/src/windows-webcam.css','tests/windows-webcam.test.cjs','tests/windows_webcam_ui.py']
+    paths: ['.github/workflows/owner-preview.yml','build/Build-OwnerPreview.ps1','packaging/owner-preview/**','tests/owner-preview.test.cjs','build/integrate_field_camera_onvif_service.py','build/integrate_windows_webcam.py','app/src/windows-webcam.js','app/src/windows-webcam.css','tests/windows-webcam.test.cjs','tests/windows_webcam_ui.py','build/integrate_experience_push.py','app/src/weather-desk.js','app/src/weather-desk.css','app/src/ocean-currents.js','app/src/ocean-currents.css','app/src/site-detail-enhance.js','app/src/site-detail-enhance.css','tests/experience-push.test.cjs','tests/experience_ui.py']
 permissions:
   contents: read
 concurrency:
@@ -33,6 +33,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Camera ONVIF integration failed.' }
           python build/integrate_windows_webcam.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows webcam integration failed.' }
+          python build/integrate_experience_push.py
+          if ($LASTEXITCODE -ne 0) { throw 'Experience integration failed.' }
       - name: Run source and logic checks
         shell: pwsh
         run: |
@@ -71,6 +73,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Private camera ONVIF runtime test failed.' }
           python tests/windows_webcam_ui.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows webcam UI runtime test failed.' }
+          python tests/experience_ui.py
+          if ($LASTEXITCODE -ne 0) { throw 'Experience UI runtime test failed.' }
       - name: Verify owner preview artifact
         shell: pwsh
         run: |
