@@ -63,4 +63,10 @@ def store(s):
   s=s.replace(anchor,anchor+','+','.join("'"+x+"'" for x in missing),1)
  return s
 edit('build/Build-Store.ps1',store)
+
+# Fresh native UI baseline grows from 26 to 40 bundled records after catalog revision 3.
+def ui_test(s):
+ return repl(s,"assert page.locator('.site-item').count()==26","assert page.locator('.site-item').count()==40")
+edit('tests/next_ui_test.py',ui_test)
+
 print('Integrated always-open seven-day weather ribbon, physical Earth reference detail, stronger current flow, and catalog revision 3 expansion.')
