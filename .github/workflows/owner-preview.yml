@@ -42,9 +42,14 @@ jobs:
         run: |
           ./build/Build-OwnerPreview.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Owner preview build failed.' }
-          $exe = (Resolve-Path 'dist/AtlasCommand-OwnerPreview/AtlasCommand.exe').Path
+          $source = (Resolve-Path 'dist/AtlasCommand-OwnerPreview').Path
+          $stage = Join-Path $env:RUNNER_TEMP ('atlas-owner-preview-smoke-' + [guid]::NewGuid().ToString('N'))
+          $null = New-Item -ItemType Directory -Path $stage
+          Copy-Item -Path (Join-Path $source '*') -Destination $stage -Recurse -Force
+          $exe = Join-Path $stage 'AtlasCommand.exe'
+          if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'Temporary owner-preview executable was not staged.' }
           ('ATLAS_SMOKE_EXE=' + $exe) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-          ('ATLAS_SMOKE_STAGE=' + (Split-Path -Parent $exe)) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          ('ATLAS_SMOKE_STAGE=' + $stage) | Out-File $env:GITHUB_ENV -Append -Encoding utf8
       - name: Exercise native app and current UI
         shell: pwsh
         run: |
@@ -81,4 +86,9 @@ jobs:
             dist/OWNER-PREVIEW-REPORT.json
           retention-days: 3
           if-no-files-found: error
+      - name: Remove temporary verification copy
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:ATLAS_SMOKE_STAGE -and (Test-Path -LiteralPath $env:ATLAS_SMOKE_STAGE)) { Remove-Item -LiteralPath $env:ATLAS_SMOKE_STAGE -Recurse -Force }
 # No signing, Store upload, public release, elevation, endpoint-security exception, or automated installation.
