@@ -69,4 +69,13 @@ def ui_test(s):
  return repl(s,"assert page.locator('.site-item').count()==26","assert page.locator('.site-item').count()==40")
 edit('tests/next_ui_test.py',ui_test)
 
-print('Integrated always-open seven-day weather ribbon, physical Earth reference detail, stronger current flow, and catalog revision 3 expansion.')
+# A just-closed headless Edge socket can occasionally reset one loopback test connection on Windows runners.
+# Retry that transport-level reset once only; repeated resets still fail and no HTTP assertion is weakened.
+def native_smoke(s):
+ old="""        connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=12)\n        try:\n            connection.request(method, path, body=body if method == 'POST' else None, headers=headers or {})\n            response = connection.getresponse()\n            return response.status, dict((k.lower(), v) for k, v in response.getheaders()), response.read()\n        finally:\n            connection.close()\n"""
+ new="""        for attempt in range(2):\n            connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=12)\n            try:\n                connection.request(method, path, body=body if method == 'POST' else None, headers=headers or {})\n                response = connection.getresponse()\n                return response.status, dict((k.lower(), v) for k, v in response.getheaders()), response.read()\n            except ConnectionResetError:\n                if attempt or self.process is None or self.process.poll() is not None:\n                    raise\n                time.sleep(0.15)\n            finally:\n                connection.close()\n        raise AssertionError('Loopback request did not complete after one reset retry.')\n"""
+ if new in s:return s
+ return repl(s,old,new)
+edit('tests/windows_native_smoke.py',native_smoke)
+
+print('Integrated always-open seven-day weather ribbon, physical Earth reference detail, stronger current flow, catalog revision 3 expansion, and bounded native preview retry.')
