@@ -1,0 +1,8 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
+test('satellite Earth uses one fixed NASA Blue Marble visual source',()=>{const s=read('app/src/satellite-earth.js');assert(s.includes("const BLUE_MARBLE='https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png'"));assert(!s.includes('fetch('));assert(!s.includes('XMLHttpRequest'));assert(!s.includes('WebSocket'));});
+test('photographic globe is explicitly visual context, not terrain or live imagery',()=>{const s=read('app/src/satellite-earth.js');assert(s.includes('NASA BLUE MARBLE · SATELLITE MOSAIC'));assert(s.includes('approximate lunar phase context'));});
+test('HD integration allowlists only the NASA image host and bundles local runtime files',()=>{const s=read('build/integrate_visual_hd_push.py');assert(s.includes("img-src 'self' blob: data: https://svs.gsfc.nasa.gov;"));for(const f of ['src/satellite-earth.js','src/satellite-earth.css'])assert(s.includes(f));assert(!s.includes("default-src *"));assert(!s.includes("img-src *"));});
+test('weather ribbon is materially smaller than the previous 980px by 76px presentation',()=>{const s=read('app/src/weather-ribbon.css');assert(s.includes('width:min(820px'));assert(s.includes('min-height:56px'));assert(!s.includes('width:min(980px'));});
+test('photographic Earth layer stays pointer transparent so globe interactions remain natural',()=>{const s=read('app/src/satellite-earth.css');assert(s.includes('pointer-events:none'));assert(s.includes('#globe{position:relative;z-index:2}'));});
