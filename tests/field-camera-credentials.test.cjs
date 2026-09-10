@@ -1,4 +1,5 @@
 'use strict';
+// Security assertions for the Windows-protected camera sign-in boundary.
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8');
 test('camera sign-in UI keeps secrets out of browser/profile storage',()=>{const s=read('app/src/field-camera-auth.js');assert.match(s,/type="password"/);assert.match(s,/fetch\('api\/field-camera-credentials\/'\+action/);assert.doesNotMatch(s,/localStorage|sessionStorage|clipboard\.write|console\.log/);});
