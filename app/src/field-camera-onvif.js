@@ -23,14 +23,17 @@ function soapEnvelope(action,body=''){
  if(typeof body!=='string')throw Error('ONVIF body must be text.');
  return `<?xml version="1.0" encoding="UTF-8"?><s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope"><s:Body>${body}</s:Body></s:Envelope>`;
 }
+function xml(v,max=256){if(typeof v!=='string'||!v.trim()||v.length>max)throw Error('ONVIF profile token is invalid.');return v.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');}
 function getCapabilitiesEnvelope(){return soapEnvelope('http://www.onvif.org/ver10/device/wsdl/GetCapabilities','<tds:GetCapabilities xmlns:tds="http://www.onvif.org/ver10/device/wsdl"><tds:Category>Media</tds:Category></tds:GetCapabilities>');}
 function getProfilesEnvelope(){return soapEnvelope('http://www.onvif.org/ver10/media/wsdl/GetProfiles','<trt:GetProfiles xmlns:trt="http://www.onvif.org/ver10/media/wsdl"/>');}
+function getStreamUriEnvelope(profileToken){const token=xml(profileToken);return soapEnvelope('http://www.onvif.org/ver10/media/wsdl/GetStreamUri','<trt:GetStreamUri xmlns:trt="http://www.onvif.org/ver10/media/wsdl"><trt:StreamSetup><tt:Stream xmlns:tt="http://www.onvif.org/ver10/schema">RTP-Unicast</tt:Stream><tt:Transport xmlns:tt="http://www.onvif.org/ver10/schema"><tt:Protocol>RTSP</tt:Protocol></tt:Transport></trt:StreamSetup><trt:ProfileToken>'+token+'</trt:ProfileToken></trt:GetStreamUri>');}
 function validateAdvertisedUri(uri,expectedHost){
  if(typeof uri!=='string'||uri.length>2048)throw Error('Invalid advertised media URI.');let u;try{u=new URL(uri);}catch{throw Error('Invalid advertised media URI.');}
  if(!['rtsp:','rtsps:','http:','https:'].includes(u.protocol))throw Error('Unsupported advertised media URI scheme.');
  if(u.username||u.password)throw Error('Credential-bearing media URIs are not accepted.');
  const host=cleanHost(expectedHost);if(u.hostname.toLowerCase()!==host.replace(/^\[|\]$/g,''))throw Error('Advertised media URI points to a different host.');
+ if(u.search||u.hash)throw Error('Advertised media URI query and fragment data are not accepted.');
  return Object.freeze({scheme:u.protocol.slice(0,-1),host:u.hostname,port:u.port?Number(u.port):null,path:u.pathname});
 }
-return Object.freeze({DEFAULT_PATH,endpoint,automaticCandidates,soapEnvelope,getCapabilitiesEnvelope,getProfilesEnvelope,validateAdvertisedUri});
+return Object.freeze({DEFAULT_PATH,endpoint,automaticCandidates,soapEnvelope,getCapabilitiesEnvelope,getProfilesEnvelope,getStreamUriEnvelope,validateAdvertisedUri});
 });
