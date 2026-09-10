@@ -22,4 +22,4 @@ def app(s):
 edit('app/src/app.js',app)
 edit('native/AtlasHost.cs',lambda s:once(s,'rel == "src/ui-refinement.css" ||','rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/field-camera-ux.js" || rel == "src/field-camera-ux.css" ||'))
 edit('build/Build-Store.ps1',lambda s:once(s,"'src/ui-refinement.css'","'src/ui-refinement.css','src/field-cameras.js','src/field-camera-desk.js','src/field-cameras.css','src/field-camera-ux.js','src/field-camera-ux.css'"))
-print('Integrated private camera metadata editor and guided setup journey. No camera transport, credentials, or new remote endpoint.')
+print('Integrated private camera metadata editor and guided four-step setup journey. No camera transport, credentials, or new remote endpoint.')
