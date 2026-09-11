@@ -86,12 +86,15 @@ def ui_test(s):
  return repl(s,"assert page.locator('.site-item').count()==26","assert page.locator('.site-item').count()==50")
 edit('tests/next_ui_test.py',ui_test)
 
-# A just-closed headless Edge socket can occasionally reset one loopback test connection on Windows runners.
+# Keep the real-host smoke test aligned with the curated catalog and tolerate one just-closed Edge socket reset.
 def native_smoke(s):
+ s=s.replace("document.count('class=\"site-item ') != 40","document.count('class=\"site-item ') != 50")
+ s=s.replace('did not display its 40 bundled catalog records','did not display its 50 bundled catalog records')
+ s=s.replace('renders 40 bundled catalog records','renders 50 bundled catalog records')
  old="""        connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=12)\n        try:\n            connection.request(method, path, body=body if method == 'POST' else None, headers=headers or {})\n            response = connection.getresponse()\n            return response.status, dict((k.lower(), v) for k, v in response.getheaders()), response.read()\n        finally:\n            connection.close()\n"""
  new="""        for attempt in range(2):\n            connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=12)\n            try:\n                connection.request(method, path, body=body if method == 'POST' else None, headers=headers or {})\n                response = connection.getresponse()\n                return response.status, dict((k.lower(), v) for k, v in response.getheaders()), response.read()\n            except ConnectionResetError:\n                if attempt or self.process is None or self.process.poll() is not None:\n                    raise\n                time.sleep(0.15)\n            finally:\n                connection.close()\n        raise AssertionError('Loopback request did not complete after one reset retry.')\n"""
- if new in s:return s
- return repl(s,old,new)
+ if new not in s:s=repl(s,old,new)
+ return s
 edit('tests/windows_native_smoke.py',native_smoke)
 
-print('Integrated compact weather ribbon, deferred photographic NASA Earth presentation with offline fallback, larger globe, stronger current flow, catalog revision 4 expansion to 50 bundled records, and bounded native preview retry.')
+print('Integrated compact weather ribbon, deferred photographic NASA Earth presentation with offline fallback, larger globe, stronger current flow, catalog revision 4 expansion to 50 bundled records, and aligned native preview validation.')
