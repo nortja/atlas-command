@@ -6,5 +6,5 @@
 #shutdownBtn[disabled]{opacity:.58;cursor:wait;transform:none}
 body.atlas-powering-off #shutdownBtn{filter:saturate(.65);opacity:.62}
 .atlas-power-off-screen{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:radial-gradient(circle at 50% 42%,rgba(22,44,55,.55),#061018 58%,#02070b);color:#e8f4f6;text-align:center;font-family:'Segoe UI',system-ui,sans-serif}.atlas-power-off-screen div{max-width:460px;padding:34px}.atlas-power-off-screen .power-symbol{display:block;margin:0 auto 16px;width:44px;height:44px;border-radius:50%;background:#7a2428;color:white;display:grid;place-items:center;font-size:22px}.atlas-power-off-screen h1{margin:0 0 8px;font:600 22px/1.2 Georgia,serif}.atlas-power-off-screen p{margin:0;color:#9fb5bd;font-size:13px;line-height:1.6}
-@media(max-width:900px){#shutdownBtn{width:28px;height:28px;min-width:28px;min-height:28px;border-radius:8px;font-size:14px}}
+@media(max-width:900px){#shutdownBtn{position:fixed;right:8px;top:8px;z-index:120;width:28px;height:28px;min-width:28px;min-height:28px;border-radius:8px;font-size:14px;margin:0}}
 .reduced-motion #shutdownBtn{transition:none}
