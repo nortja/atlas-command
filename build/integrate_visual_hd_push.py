@@ -3,6 +3,7 @@ Development/owner-preview only. No Store submission, signing, background service
 """
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
+NASA='https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png'
 
 def edit(path,fn):
  p=ROOT/path;s=p.read_text('utf-8');n=fn(s)
@@ -97,4 +98,18 @@ def native_smoke(s):
  return s
 edit('tests/windows_native_smoke.py',native_smoke)
 
-print('Integrated compact weather ribbon, deferred photographic NASA Earth presentation with offline fallback, larger globe, stronger current flow, catalog revision 4 expansion to 50 bundled records, and aligned native preview validation.')
+# The fixed NASA Blue Marble image is the one intentional renderer visual request in ordinary UI tests.
+def allow_nasa_in_ui_test(s):
+ s=s.replace("not r.url.startswith('http://127.0.0.1:')","not (r.url.startswith('http://127.0.0.1:') or r.url=='"+NASA+"')")
+ s=s.replace("not r.url.startswith(('http://127.0.0.1:','blob:','data:'))","not (r.url.startswith(('http://127.0.0.1:','blob:','data:')) or r.url=='"+NASA+"')")
+ s=s.replace("not r.url.startswith(('http://127.0.0.1:','data:','blob:'))","not (r.url.startswith(('http://127.0.0.1:','data:','blob:')) or r.url=='"+NASA+"')")
+ return s
+for test_path in ['tests/weather_units_ui.py','tests/field_cameras_ui.py','tests/windows_webcam_ui.py','tests/experience_ui.py']:
+ edit(test_path,allow_nasa_in_ui_test)
+
+def visual_ui(s):
+ s=s.replace("assert page.locator('.site-item').count()==40","assert page.locator('.site-item').count()==50")
+ return s
+edit('tests/visual_hd_ui.py',visual_ui)
+
+print('Integrated compact weather ribbon, deferred photographic NASA Earth presentation with offline fallback, larger globe, stronger current flow, catalog revision 4 expansion to 50 bundled records, and aligned native/UI preview validation.')
