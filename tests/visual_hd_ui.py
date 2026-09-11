@@ -22,7 +22,7 @@ def main():
    page=context.new_page();page.route(NASA,lambda route:route.abort())
    page.on('pageerror',lambda e:errors.append(str(e)));page.on('request',lambda r:external.append(r.url) if not r.url.startswith(('http://127.0.0.1:','data:','blob:')) and r.url!=NASA else None)
    page.goto(host.url,wait_until='domcontentloaded');page.wait_for_selector('#weatherRibbon')
-   assert page.locator('.site-item').count()==40
+   assert page.locator('.site-item').count()==75
    assert page.evaluate('AtlasTest.globe.environmentRenderers.has("physical-earth")')
    assert page.evaluate('AtlasTest.globe.environmentRenderers.has("satellite-earth")')
    assert page.locator('#satelliteEarth').count()==1
@@ -32,13 +32,15 @@ def main():
    assert 'Live weather is off' in page.locator('#weatherRibbon').inner_text()
    page.locator('[data-site="catalog-jericho-tell-es-sultan"]').click();page.wait_for_timeout(150)
    assert 'Ancient Jericho' in page.locator('#weatherRibbon').inner_text()
+   page.locator('[data-site="catalog-liangzhu"]').click();page.wait_for_timeout(100)
+   assert 'Liangzhu' in page.locator('.site-heading').inner_text()
    assert page.locator('#siteDeepDive').is_visible()
    assert 'Why this site matters' in page.locator('#siteDeepDive').inner_text()
    assert page.locator('#currentsBtn').is_visible()
    assert not errors,errors
    assert not external,external
    context.close();browser.close()
-  host.stop();print('PASS: photographic Earth layer, compact weather ribbon, expanded catalog and current controls mount in native preview',flush=True);return 0
+  host.stop();print('PASS: photographic Earth layer, compact weather ribbon, 75-site curated catalog and current controls mount in native preview',flush=True);return 0
  finally:host.cleanup()
 
 if __name__=='__main__':raise SystemExit(main())
