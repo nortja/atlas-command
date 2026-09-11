@@ -1,5 +1,6 @@
 # Private same-day owner preview. Builds and tests only; never installs on the owner's PC or uploads to Store.
 # Validation revision: compact weather ribbon is viewport-bounded; the one approved NASA visual basemap is isolated in CI.
+# Power lifecycle revision: minimized windows stay alive, close exits cleanly, and the last globe view is restored.
 name: Build Atlas owner preview
 on:
   push:
