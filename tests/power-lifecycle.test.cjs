@@ -16,8 +16,8 @@ test('minimize and close are distinct lifecycle states',()=>{
  assert(py.includes("document.hidden?'hidden':'visible'"));
  assert(py.includes("sendLifecycle('closing')"));
  assert(py.includes('WindowHidden'));
- assert(py.includes('TotalHours > 12'));
- assert(py.includes('DateTime.UtcNow.AddSeconds(2).Ticks'));
+ assert(/TotalHours\s*>\s*12/.test(py));
+ assert(/DateTime\.UtcNow\.AddSeconds\(2\)\.Ticks/.test(py));
 });
 
 test('last globe position and selected site are restored across a clean restart',()=>{
