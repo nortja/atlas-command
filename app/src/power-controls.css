@@ -1,0 +1,10 @@
+/* Native owner-preview power control. Small, explicit, and visually separate from normal navigation. */
+#shutdownBtn{flex:0 0 auto;width:30px;height:30px;min-width:30px;min-height:30px;padding:0;border-radius:9px;border:1px solid rgba(255,150,150,.28);background:linear-gradient(180deg,#9b2f35,#6f2025);color:#fff;font:700 15px/1 'Segoe UI',system-ui,sans-serif;display:grid;place-items:center;box-shadow:0 4px 14px rgba(69,0,0,.28),inset 0 1px rgba(255,255,255,.10);cursor:pointer;transition:transform .14s ease,filter .14s ease,box-shadow .14s ease}
+#shutdownBtn:hover{filter:brightness(1.16);box-shadow:0 6px 18px rgba(88,0,0,.34),inset 0 1px rgba(255,255,255,.12)}
+#shutdownBtn:active{transform:translateY(1px) scale(.97)}
+#shutdownBtn:focus-visible{outline:2px solid rgba(255,213,213,.92);outline-offset:2px}
+#shutdownBtn[disabled]{opacity:.58;cursor:wait;transform:none}
+body.atlas-powering-off #shutdownBtn{filter:saturate(.65);opacity:.62}
+.atlas-power-off-screen{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:radial-gradient(circle at 50% 42%,rgba(22,44,55,.55),#061018 58%,#02070b);color:#e8f4f6;text-align:center;font-family:'Segoe UI',system-ui,sans-serif}.atlas-power-off-screen div{max-width:460px;padding:34px}.atlas-power-off-screen .power-symbol{display:block;margin:0 auto 16px;width:44px;height:44px;border-radius:50%;background:#7a2428;color:white;display:grid;place-items:center;font-size:22px}.atlas-power-off-screen h1{margin:0 0 8px;font:600 22px/1.2 Georgia,serif}.atlas-power-off-screen p{margin:0;color:#9fb5bd;font-size:13px;line-height:1.6}
+@media(max-width:900px){#shutdownBtn{width:28px;height:28px;min-width:28px;min-height:28px;border-radius:8px;font-size:14px}}
+.reduced-motion #shutdownBtn{transition:none}
