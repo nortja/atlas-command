@@ -55,7 +55,7 @@ def native(s):
             string raw=File.ReadAllText(RuntimeSessionPath,Utf8).Trim(); Uri uri;
             if(!Uri.TryCreate(raw,UriKind.Absolute,out uri))return false;
             if(!String.Equals(uri.Scheme,"http",StringComparison.Ordinal)||!String.Equals(uri.Host,"127.0.0.1",StringComparison.Ordinal)||uri.Port<1||uri.Port>65535)return false;
-            if(!String.IsNullOrEmpty(uri.UserInfo)||!String.IsNullOrEmpty(uri.Query)||!String.IsNullOrEmpty(uri.Fragment)||!Regex.IsMatch(uri.AbsolutePath,"^/[a-f0-9]{32}/index\\.html$",RegexOptions.CultureInvariant))return false;
+            if(!String.IsNullOrEmpty(uri.UserInfo)||!String.IsNullOrEmpty(uri.Query)||!String.IsNullOrEmpty(uri.Fragment)||!Regex.IsMatch(uri.AbsolutePath,@"^/[a-f0-9]{32}/index\.html$",RegexOptions.CultureInvariant))return false;
             string edge=FindEdge(); if(edge==null)return false;
             string profile=Path.Combine(AppData,"Browser");
             ProcessStartInfo start=new ProcessStartInfo(edge,"--app=\\\""+uri.AbsoluteUri+"\\\" --user-data-dir=\\\""+profile+"\\\" --no-first-run --no-default-browser-check --window-size=1600,1000");
