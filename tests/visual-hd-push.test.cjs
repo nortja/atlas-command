@@ -1,4 +1,5 @@
 'use strict';
+// Owner-preview gate: catalog revision four carries the curated 50-record baseline.
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const W=require('../app/src/weather-ribbon.js'),P=require('../app/src/earth-physical.js');
 const site={lat:37.2231,lon:38.9225,name:'Göbekli Tepe'};
