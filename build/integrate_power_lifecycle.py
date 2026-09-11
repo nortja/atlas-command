@@ -1,4 +1,4 @@
-"""Integrate explicit native shutdown, minimize-safe lifecycle handling, and last-globe-view restore.
+"""Integrate explicit native shutdown, minimize-safe lifecycle handling, last-globe-view restore, and safe reopen.
 Runs after the existing minimize integration so both lifecycle layers remain compatible.
 Development/owner-preview only. No installer, signing, Store submission, background service, or security bypass.
 """
@@ -32,6 +32,39 @@ edit('app/src/app.js',app)
 
 def native(s):
  if 'static long HiddenSinceTicks;' not in s:s=once(s,'static long LastHeartbeat = DateTime.UtcNow.Ticks;','static long LastHeartbeat = DateTime.UtcNow.Ticks;\n    static long HiddenSinceTicks;\n    static long CloseAfterTicks;')
+ if 'RuntimeSessionPath' not in s:s=once(s,'static string LogPath;','static string LogPath, RuntimeSessionPath;')
+ s=once(s,'Directory.CreateDirectory(AppData);\n            LogPath = Path.Combine(AppData, "host.log");','Directory.CreateDirectory(AppData);\n            LogPath = Path.Combine(AppData, "host.log");\n            RuntimeSessionPath = Path.Combine(AppData, "runtime-session.txt");')
+ s=once(s,'if (!owned) {\n                MessageBox.Show("Atlas Command is already running. Return to its window. After closing the window, its local helper stops within five minutes. Use Settings > Stop local app to stop it immediately.", "Atlas Command", MessageBoxButtons.OK, MessageBoxIcon.Information);\n                return;\n            }','if (!owned) {\n                if (!TryReopenRunningWindow()) MessageBox.Show("Atlas Command is already running, but its window could not be restored automatically. Use Task Manager only if the app will not reopen.", "Atlas Command", MessageBoxButtons.OK, MessageBoxIcon.Information);\n                return;\n            }')
+ s=once(s,'string url = Origin + Prefix + "index.html";\n            string profile = Path.Combine(AppData, "Browser");','string url = Origin + Prefix + "index.html";\n            WriteRuntimeSession(url);\n            string profile = Path.Combine(AppData, "Browser");')
+ s=once(s,'if (owned && mutex != null) mutex.ReleaseMutex();','if (owned && !String.IsNullOrEmpty(RuntimeSessionPath)) try { File.Delete(RuntimeSessionPath); } catch { }\n            if (owned && mutex != null) mutex.ReleaseMutex();')
+ helper_anchor='''    // Fixed USGS JPEG adapter. Never accepts a URL, credentials, or a LAN camera address.'''
+ if 'static bool TryReopenRunningWindow()' not in s:
+  helpers='''    static void WriteRuntimeSession(string url)
+    {
+        if (String.IsNullOrEmpty(RuntimeSessionPath)) return;
+        string temp=RuntimeSessionPath+"."+Guid.NewGuid().ToString("N")+".tmp";
+        File.WriteAllText(temp,url,Utf8);
+        if(File.Exists(RuntimeSessionPath)){try{File.Replace(temp,RuntimeSessionPath,null);}catch{File.Delete(RuntimeSessionPath);File.Move(temp,RuntimeSessionPath);}}
+        else File.Move(temp,RuntimeSessionPath);
+    }
+
+    static bool TryReopenRunningWindow()
+    {
+        try {
+            if(String.IsNullOrEmpty(RuntimeSessionPath)||!File.Exists(RuntimeSessionPath)||new FileInfo(RuntimeSessionPath).Length>1024)return false;
+            string raw=File.ReadAllText(RuntimeSessionPath,Utf8).Trim(); Uri uri;
+            if(!Uri.TryCreate(raw,UriKind.Absolute,out uri))return false;
+            if(!String.Equals(uri.Scheme,"http",StringComparison.Ordinal)||!String.Equals(uri.Host,"127.0.0.1",StringComparison.Ordinal)||uri.Port<1||uri.Port>65535)return false;
+            if(!String.IsNullOrEmpty(uri.UserInfo)||!String.IsNullOrEmpty(uri.Query)||!String.IsNullOrEmpty(uri.Fragment)||!Regex.IsMatch(uri.AbsolutePath,"^/[a-f0-9]{32}/index\\.html$",RegexOptions.CultureInvariant))return false;
+            string edge=FindEdge(); if(edge==null)return false;
+            string profile=Path.Combine(AppData,"Browser");
+            ProcessStartInfo start=new ProcessStartInfo(edge,"--app=\\\""+uri.AbsoluteUri+"\\\" --user-data-dir=\\\""+profile+"\\\" --no-first-run --no-default-browser-check --window-size=1600,1000");
+            start.UseShellExecute=false; return Process.Start(start)!=null;
+        } catch(Exception ex) { Log("Existing-window restore failed: "+ex.GetType().Name); return false; }
+    }
+
+'''
+  s=once(s,helper_anchor,helpers+helper_anchor)
  s=once(s,"""            while (!Stopping) {
                 double idleMinutes=new TimeSpan(DateTime.UtcNow.Ticks - Interlocked.Read(ref LastHeartbeat)).TotalMinutes;
                 if ((!WindowHidden && idleMinutes > 5) || (WindowHidden && idleMinutes > 480)) break;""","""            while (!Stopping) {
@@ -56,4 +89,4 @@ def next_ui(s):
  if 'https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png' in s:return s
  return once(s,"page.on('request',lambda r:external.append(r.url) if not r.url.startswith(('http://127.0.0.1:','data:','blob:')) else None)","page.on('request',lambda r:external.append(r.url) if not (r.url.startswith(('http://127.0.0.1:','data:','blob:')) or r.url=='https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png') else None)")
 edit('tests/next_ui_test.py',next_ui)
-print('Integrated explicit red shutdown control, clean minimize/close lifecycle, restart-safe globe persistence, and exact NASA-basemap CI allowance.')
+print('Integrated red shutdown, minimize-safe lifecycle, safe second-launch reopen, globe persistence, and exact NASA-basemap CI allowance.')
