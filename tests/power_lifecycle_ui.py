@@ -2,7 +2,7 @@
 This exercises the unpackaged owner preview only; it is not Windows 11 package acceptance.
 """
 from pathlib import Path
-import os,time
+import os,time,subprocess
 from playwright.sync_api import sync_playwright
 from windows_native_smoke import NativeSmoke
 
@@ -23,12 +23,22 @@ def main():
             context=browser.new_context(viewport={'width':1600,'height':1000})
             page=context.new_page();page.goto(host.url,wait_until='domcontentloaded');page.wait_for_selector('#shutdownBtn')
             box=page.locator('#shutdownBtn').bounding_box();assert box and box['width']<=34 and box['height']<=34
+            runtime_session=appdata/'runtime-session.txt';deadline=time.monotonic()+5
+            while time.monotonic()<deadline and not runtime_session.exists():time.sleep(.05)
+            assert runtime_session.exists() and runtime_session.read_text('utf-8').strip()==host.url
+            second=subprocess.run([str(exe)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10,check=False)
+            assert second.returncode==0,'Second launch did not return after asking the existing Atlas session to reopen.'
+            assert host.process.poll() is None,'Second launch must not replace the existing native host.'
+            print('PASS: Launching Atlas again while it is already running reopens the validated local session instead of blocking on an already-running dialog.',flush=True)
             selected_id=page.evaluate("AtlasWorkspace.sites.list().find(s=>s.name!=='Göbekli Tepe').id")
             page.evaluate("id=>{AtlasTest.select(id,true);AtlasTest.globe.target=null;AtlasTest.globe.lat=34.25;AtlasTest.globe.lon=-118.45;AtlasTest.globe.zoom=1.73;}",selected_id)
             page.locator('#shutdownBtn').dispatch_event('click')
             deadline=time.monotonic()+12
             while time.monotonic()<deadline and host.process.poll() is None:time.sleep(.1)
             assert host.process.poll()==0,'Shutdown button did not stop the native host cleanly.'
+            deadline=time.monotonic()+3
+            while time.monotonic()<deadline and runtime_session.exists():time.sleep(.05)
+            assert not runtime_session.exists(),'Clean shutdown left a stale runtime-session file.'
             context.close()
             host.start()
             context=browser.new_context(viewport={'width':1600,'height':1000})
