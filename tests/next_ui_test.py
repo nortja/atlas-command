@@ -6,7 +6,6 @@ from windows_native_smoke import NativeSmoke
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'next-test-output'
 CHECKS=[]
-NASA_VISUAL='https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png'
 def passed(label):CHECKS.append(label);print('PASS:',label,flush=True)
 def main():
  if os.name!='nt' or os.environ.get('GITHUB_ACTIONS')!='true' or os.environ.get('RUNNER_ENVIRONMENT')!='github-hosted':raise RuntimeError('Disposable GitHub-hosted Windows runner required.')
@@ -21,10 +20,7 @@ def main():
    browser=pw.chromium.launch(channel='msedge',headless=True)
    context=browser.new_context(viewport={'width':2560,'height':1440},has_touch=True)
    page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
-   # The fixed NASA Blue Marble image is an approved visual basemap, not a data/API endpoint.
-   # Abort it in CI so the workspace test remains deterministic and does not depend on Internet availability.
-   page.route(NASA_VISUAL,lambda route:route.abort())
-   page.on('request',lambda r:external.append(r.url) if not r.url.startswith(('http://127.0.0.1:','data:','blob:')) and r.url!=NASA_VISUAL else None)
+   page.on('request',lambda r:external.append(r.url) if not (r.url.startswith(('http://127.0.0.1:','data:','blob:')) or r.url=='https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png') else None)
    page.goto(host.url,wait_until='domcontentloaded');page.wait_for_selector('#workspacePresets');page.wait_for_selector('#lidarDeskBtn')
    assert page.locator('.site-item').count()==26
    assert page.evaluate('AtlasWorkspace.version')==1 and page.evaluate('AtlasWorkspace.storageMode')=='native'
@@ -93,7 +89,10 @@ def main():
    passed('Failed local save reports the error and rolls back layout state')
    for width,height in [(1366,768),(2560,1080),(820,1180)]:
     page.set_viewport_size({'width':width,'height':height});page.wait_for_timeout(220)
-    assert page.evaluate('document.documentElement.scrollWidth<=innerWidth+1'),f'Overflow at {width}'
+    fits=page.evaluate('document.documentElement.scrollWidth<=innerWidth+1')
+    if not fits:
+     overflow=page.evaluate('''()=>[...document.querySelectorAll('body *')].map(e=>{const r=e.getBoundingClientRect();return {tag:e.tagName,id:e.id,cls:(typeof e.className==='string'?e.className:''),left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),scrollWidth:e.scrollWidth,position:getComputedStyle(e).position,overflowX:getComputedStyle(e).overflowX}}).filter(x=>x.width>0&&(x.right>innerWidth+1||x.left<-1||x.scrollWidth>innerWidth+1)).slice(0,25)''')
+     raise AssertionError(f'Overflow at {width}: {json.dumps(overflow,separators=(",",":"))}')
     page.locator('#workspacePresets').click()
     if width>=950:page.locator('[data-preset="explore"]').click();page.locator("#workspaceChooser").wait_for(state="hidden")
     else:assert page.locator('[data-preset="explore"]').is_disabled();page.locator('#workspaceChooser [data-close]').click()
