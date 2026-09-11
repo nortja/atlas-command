@@ -2,7 +2,7 @@
 This exercises the unpackaged owner preview only; it is not Windows 11 package acceptance.
 """
 from pathlib import Path
-import os,time,subprocess
+import json,os,time,subprocess
 from playwright.sync_api import sync_playwright
 from windows_native_smoke import NativeSmoke
 
@@ -31,11 +31,15 @@ def main():
             assert host.process.poll() is None,'Second launch must not replace the existing native host.'
             print('PASS: Launching Atlas again while it is already running reopens the validated local session instead of blocking on an already-running dialog.',flush=True)
             selected_id=page.evaluate("AtlasWorkspace.sites.list().find(s=>s.name!=='Göbekli Tepe').id")
-            page.evaluate("id=>{AtlasTest.select(id,true);AtlasTest.globe.target=null;AtlasTest.globe.lat=34.25;AtlasTest.globe.lon=-118.45;AtlasTest.globe.zoom=1.73;}",selected_id)
+            page.evaluate("id=>{AtlasTest.select(id,true);AtlasTest.globe.spin=false;AtlasTest.globe.target=null;AtlasTest.globe.lat=34.25;AtlasTest.globe.lon=-118.45;AtlasTest.globe.zoom=1.73;}",selected_id)
             page.locator('#shutdownBtn').dispatch_event('click')
             deadline=time.monotonic()+12
             while time.monotonic()<deadline and host.process.poll() is None:time.sleep(.1)
             assert host.process.poll()==0,'Shutdown button did not stop the native host cleanly.'
+            state_path=appdata/'Data'/'workspace.json'
+            saved=json.loads(state_path.read_text('utf-8'))['settings']['globeView']
+            assert abs(saved['lat']-34.25)<.001 and abs(saved['lon']+118.45)<.001 and abs(saved['zoom']-1.73)<.001
+            assert saved['selectedId']==selected_id
             deadline=time.monotonic()+3
             while time.monotonic()<deadline and runtime_session.exists():time.sleep(.05)
             assert not runtime_session.exists(),'Clean shutdown left a stale runtime-session file.'
@@ -44,10 +48,10 @@ def main():
             context=browser.new_context(viewport={'width':1600,'height':1000})
             page=context.new_page();page.goto(host.url,wait_until='domcontentloaded');page.wait_for_selector('#shutdownBtn')
             restored=page.evaluate("({lat:AtlasTest.globe.lat,lon:AtlasTest.globe.lon,zoom:AtlasTest.globe.zoom,selected:AtlasTest.globe.selected})")
-            assert abs(restored['lat']-34.25)<.02 and abs(restored['lon']+118.45)<.02 and abs(restored['zoom']-1.73)<.02
+            assert abs(restored['lat']-34.25)<.02 and abs(restored['lon']+118.45)<.02 and abs(restored['zoom']-1.73)<.02,restored
             assert restored['selected']==selected_id
-            print('PASS: Small red shutdown control stops Atlas cleanly and releases the native host.',flush=True)
-            print('PASS: A normal restart restores the last globe position, zoom and selected site.',flush=True)
+            print('PASS: Small red shutdown control freezes the map, saves Atlas cleanly and releases the native host.',flush=True)
+            print('PASS: A normal restart restores the saved globe position, zoom and selected site.',flush=True)
             host.stop();context.close();browser.close();browser=None
     finally:
         if browser:
