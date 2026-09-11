@@ -20,6 +20,13 @@ test('minimize and close are distinct lifecycle states',()=>{
  assert(/DateTime\.UtcNow\.AddSeconds\(2\)\.Ticks/.test(py));
 });
 
+test('second app launch can reopen only the saved local Atlas session',()=>{
+ const py=read('build/integrate_power_lifecycle.py');
+ for(const token of ['runtime-session.txt','TryReopenRunningWindow','127.0.0.1','^/[a-f0-9]{32}/index','uri.UserInfo','uri.Query','uri.Fragment'])assert(py.includes(token));
+ assert(py.includes('FileInfo(RuntimeSessionPath).Length>1024'));
+ assert(py.includes('Process.Start(start)!=null'));
+});
+
 test('last globe position and selected site are restored across a clean restart',()=>{
  const py=read('build/integrate_power_lifecycle.py');
  for(const token of ['state.settings.globeView','selectedId','savedGlobeView','globe.lat=lat','globe.lon=lon','globe.zoom=zoom'])assert(py.includes(token));
