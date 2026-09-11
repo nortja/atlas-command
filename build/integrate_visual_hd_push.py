@@ -30,7 +30,7 @@ for path in ['app/index.html','app/workspace-preview.html']:
 
 def app(s):
  anchor='state.settings={...defaults.settings,...state.settings};state.settings.weatherUnits=AtlasWeatherUnits.normalize(state.settings.weatherUnits);'
- block='state.settings={...defaults.settings,...state.settings};\nif((Number(state.settings.catalogRevision)||0)<3&&Array.isArray(window.ATLAS_SITE_EXPANSION)){const known=new Set(state.sites.map(x=>x.id));for(const raw of window.ATLAS_SITE_EXPANSION){if(known.has(raw.id))continue;try{const site=C.normalizeSite(raw,"bundled-catalog-2026");state.sites.push(site);known.add(site.id);}catch{}}state.settings.catalogRevision=3;}\nstate.settings.weatherUnits=AtlasWeatherUnits.normalize(state.settings.weatherUnits);'
+ block='state.settings={...defaults.settings,...state.settings};\nif((Number(state.settings.catalogRevision)||0)<4&&Array.isArray(window.ATLAS_SITE_EXPANSION)){const known=new Set(state.sites.map(x=>x.id));for(const raw of window.ATLAS_SITE_EXPANSION){if(known.has(raw.id))continue;try{const site=C.normalizeSite(raw,"bundled-catalog-2026");state.sites.push(site);known.add(site.id);}catch{}}state.settings.catalogRevision=4;}\nstate.settings.weatherUnits=AtlasWeatherUnits.normalize(state.settings.weatherUnits);'
  s=repl(s,anchor,block)
  return s
 edit('app/src/app.js',app)
@@ -47,8 +47,6 @@ def globe(s):
   anchor="if(this.appearance&&W>=950){const focus=document.body.classList.contains('globe-focus');this.cy=H*(focus?.54:.66);this.radius=Math.min(H*(focus?.40:H<650?.265:H<1000?.29:.33),W*.248)*this.zoom;}"
   add=anchor+"\n  if(this.options.photoEarth&&W>=950){const focus=document.body.classList.contains('globe-focus');this.cy=H*(focus?.53:.65);this.radius=Math.min(H*(focus?.445:H<650?.315:H<1000?.37:.405),W*.30)*this.zoom;}"
   s=repl(s,anchor,add)
- # Fade the bundled instrument basemap rather than removing a large draw block.
- # This keeps the renderer syntactically simple and provides a full offline fallback until the photo mosaic is ready.
  marker='const sphere=ctx.createRadialGradient'
  if 'ctx.save();ctx.globalAlpha=this.options.photoEarth?.12:1;const sphere=ctx.createRadialGradient' not in s:
   if s.count(marker)!=1:raise RuntimeError('Could not locate globe basemap start.')
@@ -83,9 +81,9 @@ def store(s):
  return s
 edit('build/Build-Store.ps1',store)
 
-# Fresh native UI baseline grows from 26 to 40 bundled records after catalog revision 3.
+# Fresh native UI baseline grows from 26 to 50 bundled records after catalog revision 4.
 def ui_test(s):
- return repl(s,"assert page.locator('.site-item').count()==26","assert page.locator('.site-item').count()==40")
+ return repl(s,"assert page.locator('.site-item').count()==26","assert page.locator('.site-item').count()==50")
 edit('tests/next_ui_test.py',ui_test)
 
 # A just-closed headless Edge socket can occasionally reset one loopback test connection on Windows runners.
@@ -96,4 +94,4 @@ def native_smoke(s):
  return repl(s,old,new)
 edit('tests/windows_native_smoke.py',native_smoke)
 
-print('Integrated compact weather ribbon, deferred photographic NASA Earth presentation with offline fallback, larger globe, stronger current flow, catalog revision 3 expansion, and bounded native preview retry.')
+print('Integrated compact weather ribbon, deferred photographic NASA Earth presentation with offline fallback, larger globe, stronger current flow, catalog revision 4 expansion to 50 bundled records, and bounded native preview retry.')
