@@ -1,4 +1,5 @@
 """Integrate explicit native shutdown, minimize-safe lifecycle handling, and last-globe-view restore.
+Runs after the existing minimize integration so both lifecycle layers remain compatible.
 Development/owner-preview only. No installer, signing, Store submission, background service, or security bypass.
 """
 from pathlib import Path
@@ -91,4 +92,4 @@ def next_ui(s):
  return once(s,old,new)
 edit('tests/next_ui_test.py',next_ui)
 
-print('Integrated explicit red shutdown control, graceful close/minimize lifecycle, globe-view persistence, and exact NASA-basemap CI allowance.')
+print('Integrated explicit red shutdown control, graceful close/minimize lifecycle, globe-view persistence, and exact NASA-basemap CI allowance after existing minimize handling.')
