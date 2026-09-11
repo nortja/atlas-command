@@ -64,6 +64,7 @@ def counts(s):
   s=s.replace("document.count('class=\"site-item ') != "+n,"document.count('class=\"site-item ') != 100")
   s=s.replace('did not display its '+n+' bundled catalog records','did not display its 100 bundled catalog records')
   s=s.replace('renders '+n+' bundled catalog records','renders 100 bundled catalog records')
+ s=s.replace("'data/seed.js', 'data/site-expansion.js']","'data/seed.js', 'data/site-expansion.js', 'data/site-expansion-r5.js', 'data/site-expansion-r6.js', 'src/remote-updates.js']")
  return s
 for path in ['tests/next_ui_test.py','tests/visual_hd_ui.py','tests/windows_native_smoke.py']:
  edit(path,counts)
