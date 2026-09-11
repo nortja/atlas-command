@@ -42,9 +42,11 @@ window.addEventListener('beforeunload',()=>{rememberGlobe();if(!native){try{loca
 edit('app/src/app.js',app)
 
 def native(s):
- s=once(s,'static long LastHeartbeat = DateTime.UtcNow.Ticks;','static long LastHeartbeat = DateTime.UtcNow.Ticks;\n    static volatile bool WindowHidden;\n    static long HiddenSinceTicks;\n    static long CloseAfterTicks;')
+ if 'static long HiddenSinceTicks;' not in s:
+  s=once(s,'static long LastHeartbeat = DateTime.UtcNow.Ticks;','static long LastHeartbeat = DateTime.UtcNow.Ticks;\n    static long HiddenSinceTicks;\n    static long CloseAfterTicks;')
  old='''            while (!Stopping) {
-                if (new TimeSpan(DateTime.UtcNow.Ticks - Interlocked.Read(ref LastHeartbeat)).TotalMinutes > 5) break;'''
+                double idleMinutes=new TimeSpan(DateTime.UtcNow.Ticks - Interlocked.Read(ref LastHeartbeat)).TotalMinutes;
+                if ((!WindowHidden && idleMinutes > 5) || (WindowHidden && idleMinutes > 480)) break;'''
  new='''            while (!Stopping) {
                 long nowTicks = DateTime.UtcNow.Ticks, closeAfter = Interlocked.Read(ref CloseAfterTicks), hiddenSince = Interlocked.Read(ref HiddenSinceTicks);
                 if (closeAfter > 0 && nowTicks >= closeAfter) break;
