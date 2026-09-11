@@ -1,4 +1,4 @@
-/* Native owner-preview power control. Small, explicit, and visually separate from normal navigation. */
+/* Native owner-preview power control. Small, explicit, and visually separate from normal navigation. Compact layouts keep it fixed so it never widens the map workspace. */
 #shutdownBtn{flex:0 0 auto;width:30px;height:30px;min-width:30px;min-height:30px;padding:0;border-radius:9px;border:1px solid rgba(255,150,150,.28);background:linear-gradient(180deg,#9b2f35,#6f2025);color:#fff;font:700 15px/1 'Segoe UI',system-ui,sans-serif;display:grid;place-items:center;box-shadow:0 4px 14px rgba(69,0,0,.28),inset 0 1px rgba(255,255,255,.10);cursor:pointer;transition:transform .14s ease,filter .14s ease,box-shadow .14s ease}
 #shutdownBtn:hover{filter:brightness(1.16);box-shadow:0 6px 18px rgba(88,0,0,.34),inset 0 1px rgba(255,255,255,.12)}
 #shutdownBtn:active{transform:translateY(1px) scale(.97)}
