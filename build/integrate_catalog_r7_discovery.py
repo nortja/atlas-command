@@ -13,6 +13,9 @@ def replace_once(s,a,b,label):
  if s.count(a)!=1:raise RuntimeError(label+' anchor mismatch')
  return s.replace(a,b,1)
 
+# Normalize a source typo before any migration/count validation runs.
+edit('app/data/site-expansion-r7.js',lambda s:s.replace("id:'catalog-o halo-ii'","id:'catalog-ohalo-ii'"))
+
 for path in ['app/index.html','app/workspace-preview.html']:
  def html(s):
   if '<script src="data/site-expansion-r7.js"></script>' not in s:
