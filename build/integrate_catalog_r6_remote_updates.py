@@ -1,4 +1,4 @@
-"""Integrate catalog revision 6 and the fail-closed signed remote-content update framework.
+"""Integrate catalog revision 6, fail-closed signed remote content, and the local-first Privacy Center foundation.
 Executable/features remain distributed by trusted Windows channels; remote content accepts data only.
 """
 from pathlib import Path
@@ -69,8 +69,6 @@ def counts(s):
 for path in ['tests/next_ui_test.py','tests/visual_hd_ui.py','tests/windows_native_smoke.py']:
  edit(path,counts)
 
-# Privacy integration runs after catalog cardinality edits so it can keep the native smoke test focused on host/render health;
-# exact 100-site cardinality remains enforced by the dedicated Playwright UI tests.
 privacy=ROOT/'build/integrate_privacy_center.py'
 if not privacy.exists():raise RuntimeError('Privacy Center integration recipe missing.')
 exec(compile(privacy.read_text('utf-8'),str(privacy),'exec'),{'__name__':'__main__','__file__':str(privacy)})
