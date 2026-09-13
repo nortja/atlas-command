@@ -1,4 +1,4 @@
-"""Integrate catalog revision 6, fail-closed signed remote content, and the local-first Privacy Center foundation.
+"""Integrate catalog revision 6+, fail-closed signed remote content, and the local-first Privacy Center foundation.
 Executable/features remain distributed by trusted Windows channels; remote content accepts data only.
 """
 from pathlib import Path
@@ -73,9 +73,10 @@ privacy=ROOT/'build/integrate_privacy_center.py'
 if not privacy.exists():raise RuntimeError('Privacy Center integration recipe missing.')
 exec(compile(privacy.read_text('utf-8'),str(privacy),'exec'),{'__name__':'__main__','__file__':str(privacy)})
 
-r7=ROOT/'build/integrate_catalog_r7_discovery.py'
-if not r7.exists():raise RuntimeError('Catalog revision 7 integration recipe missing.')
-exec(compile(r7.read_text('utf-8'),str(r7),'exec'),{'__name__':'__main__','__file__':str(r7)})
+for revision in ['integrate_catalog_r7_discovery.py','integrate_catalog_r8.py']:
+ recipe=ROOT/'build'/revision
+ if not recipe.exists():raise RuntimeError('Catalog integration recipe missing: '+revision)
+ exec(compile(recipe.read_text('utf-8'),str(recipe),'exec'),{'__name__':'__main__','__file__':str(recipe)})
 
-print('Integrated catalog revision 6 plus revision 7 (125 bundled records), fail-closed signed remote-content updates, Privacy Center foundation, and hardened owner-preview QC.')
-# Owner-preview validation marker: revision 7 catalog + privacy baseline + bounded loopback retries.
+print('Integrated catalog revisions 6–8 (150+ source-first bundled records target), fail-closed signed remote-content updates, Privacy Center foundation, and hardened owner-preview QC.')
+# Owner-preview validation marker: revision 8 catalog + privacy baseline + bounded loopback retries.
