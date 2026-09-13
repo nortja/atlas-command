@@ -1,0 +1,6 @@
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');
+const js=fs.readFileSync('app/src/privacy-center.js','utf8');const css=fs.readFileSync('app/src/privacy-center.css','utf8');
+test('privacy controls default off and require explicit booleans',()=>{assert.match(js,/crashReports:false/);assert.match(js,/performance:false/);assert.match(js,/featureUsage:false/);assert.match(js,/researchContributions:false/);assert.match(js,/raw\[k\]===true/);});
+test('privacy center performs no telemetry wallet or remote network activity',()=>{for(const token of ['fetch(','XMLHttpRequest','WebSocket','sendBeacon','navigator.geolocation','seed phrase import','private key'])assert.equal(js.includes(token),false,token);});
+test('Midnight education is clearly not live and founder dashboard excludes private content',()=>{assert.match(js,/Midnight integration is not connected/);assert.match(js,/No wallet is created/);assert.match(js,/Founder-sponsored DUST/);assert.match(js,/without exposing users’ private maps, searches, notes, cameras or wallet secrets/);});
+test('privacy experience remains compact and responsive',()=>{assert.match(css,/width:min\(900px/);assert.match(css,/@media\(max-width:700px\)/);assert.match(css,/privacy-btn/);});
