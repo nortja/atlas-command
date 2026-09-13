@@ -78,3 +78,4 @@ if not r7.exists():raise RuntimeError('Catalog revision 7 integration recipe mis
 exec(compile(r7.read_text('utf-8'),str(r7),'exec'),{'__name__':'__main__','__file__':str(r7)})
 
 print('Integrated catalog revision 6 plus revision 7 (125 bundled records), fail-closed signed remote-content updates, Privacy Center foundation, and hardened owner-preview QC.')
+# Owner-preview validation marker: revision 7 catalog + privacy baseline.
