@@ -1,4 +1,4 @@
-"""Integrate Atlas catalog revision 7 (125 bundled records).
+"""Integrate Atlas catalog revision 7 (125 bundled records) and harden the disposable native-owner-preview loopback check.
 No Store submission, signing, telemetry, wallet activity, or remote execution is added.
 """
 from pathlib import Path
@@ -52,7 +52,39 @@ def counts(s):
 for path in ['tests/next_ui_test.py','tests/visual_hd_ui.py']:
  edit(path,counts)
 
-def smoke_assets(s):
- return s.replace("'data/seed.js', 'data/site-expansion.js', 'data/site-expansion-r5.js', 'data/site-expansion-r6.js', 'src/remote-updates.js']","'data/seed.js', 'data/site-expansion.js', 'data/site-expansion-r5.js', 'data/site-expansion-r6.js', 'data/site-expansion-r7.js', 'src/remote-updates.js']")
-edit('tests/windows_native_smoke.py',smoke_assets)
-print('Integrated catalog revision 7 to 125 bundled records; native transport hardening remains owned by the lifecycle integration stage.')
+def smoke(s):
+ s=s.replace("'data/seed.js', 'data/site-expansion.js', 'data/site-expansion-r5.js', 'data/site-expansion-r6.js', 'src/remote-updates.js']","'data/seed.js', 'data/site-expansion.js', 'data/site-expansion-r5.js', 'data/site-expansion-r6.js', 'data/site-expansion-r7.js', 'src/remote-updates.js']")
+ old="""        for attempt in range(2):
+            connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=12)
+            try:
+                connection.request(method, path, body=body if method == 'POST' else None, headers=headers or {})
+                response = connection.getresponse()
+                return response.status, dict((k.lower(), v) for k, v in response.getheaders()), response.read()
+            except (ConnectionResetError, TimeoutError):
+                if attempt or self.process is None or self.process.poll() is not None:
+                    raise
+                time.sleep(0.2)
+            finally:
+                connection.close()
+        raise AssertionError('Loopback request did not complete after one bounded retry.')
+"""
+ new="""        last_error = None
+        for attempt in range(3):
+            connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=12)
+            try:
+                connection.request(method, path, body=body if method == 'POST' else None, headers=headers or {})
+                response = connection.getresponse()
+                return response.status, dict((k.lower(), v) for k, v in response.getheaders()), response.read()
+            except (ConnectionResetError, TimeoutError) as error:
+                last_error = error
+                if attempt == 2 or self.process is None or self.process.poll() is not None:
+                    raise
+                time.sleep(0.2 * (attempt + 1))
+            finally:
+                connection.close()
+        raise last_error or AssertionError('Loopback request did not complete after bounded retries.')
+"""
+ if new not in s:s=replace_once(s,old,new,'existing bounded native retry')
+ return s
+edit('tests/windows_native_smoke.py',smoke)
+print('Integrated catalog revision 7 to 125 bundled records and strengthened the already-bounded disposable-runner loopback retry.')
