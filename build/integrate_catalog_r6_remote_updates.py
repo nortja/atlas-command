@@ -69,4 +69,10 @@ def counts(s):
 for path in ['tests/next_ui_test.py','tests/visual_hd_ui.py','tests/windows_native_smoke.py']:
  edit(path,counts)
 
-print('Integrated catalog revision 6 (100 bundled records) and fail-closed signed remote-content update framework.')
+# Privacy integration runs after catalog cardinality edits so it can keep the native smoke test focused on host/render health;
+# exact 100-site cardinality remains enforced by the dedicated Playwright UI tests.
+privacy=ROOT/'build/integrate_privacy_center.py'
+if not privacy.exists():raise RuntimeError('Privacy Center integration recipe missing.')
+exec(compile(privacy.read_text('utf-8'),str(privacy),'exec'),{'__name__':'__main__','__file__':str(privacy)})
+
+print('Integrated catalog revision 6 (100 bundled records), fail-closed signed remote-content updates, and the local-first Privacy Center foundation.')
