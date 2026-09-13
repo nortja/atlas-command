@@ -2,6 +2,7 @@
 # Validation revision: compact weather ribbon is viewport-bounded; the one approved NASA visual basemap is isolated in CI.
 # Power lifecycle revision: minimized windows stay alive, a second launch reopens the validated local session, shutdown exits cleanly, and the last globe view is restored.
 # Content-update revision: bundled catalog reaches 100 records; remote content framework is signature-gated and fail-closed until provisioned.
+# QC revision: native smoke expectations and served assets are aligned with catalog revision 6.
 name: Build Atlas owner preview
 on:
   push:
