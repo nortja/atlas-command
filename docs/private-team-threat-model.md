@@ -66,8 +66,9 @@ failed writes preserve the preceding committed ciphertext. An encrypted backup
 import is validated and decrypted in memory before replacing any local state;
 replacement is an explicit user operation. Bad passwords, corruption, unknown
 schemas or stale commits preserve the current vault. Imports keep internal IDs
-and re-encrypt under the current workspace key/context, preventing accidental
-mixing of ciphertext from different vaults.
+and use the backup key/context, with a fresh outer IV and the next local storage
+revision. The backup passphrase becomes the unlock passphrase. This keeps file
+envelopes bound to their original workspace; the UI explicitly states replacement.
 
 Attachments use the same platform primitive in separate versioned authenticated
 file envelopes, then reside inside the encrypted workspace snapshot. This bounded
