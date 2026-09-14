@@ -45,6 +45,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Catalog/update-channel integration failed.' }
           python build/integrate_power_lifecycle.py
           if ($LASTEXITCODE -ne 0) { throw 'Power lifecycle integration failed.' }
+          python build/integrate_collaboration.py
+          if ($LASTEXITCODE -ne 0) { throw 'Collaboration integration failed.' }
       - name: Run source and logic checks
         shell: pwsh
         run: |

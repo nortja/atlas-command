@@ -76,3 +76,48 @@ disposable copy; do not commit the entire materialized tree as a feature change.
 Baseline Node checks pass after materialization (377 existing checks). Running
 the raw checkout directly has one pre-existing weather CSP integration failure.
 The first collaboration block adds 10 passing model tests, for 387 total.
+
+## Shell and validation
+
+`collaboration-shell.js`/`.css` add the Teams entry and responsive dialog. Drafts
+are entered explicitly; unsaved composers survive section switches in memory.
+Invitations, file upload, encrypted storage and sharing remain unavailable. Site
+proposals retain an observation of the name, with a `session-observation` base
+marker: this is not a trustworthy catalog revision and must never be synced or
+applied. The shell exposes no acceptance/apply operation. The core model's revision
+checks are tested independently pending a trusted revision source.
+
+`build/integrate_collaboration.py` inserts the three static assets into both HTML
+entry points, the exact native allowlist and both packaging recipes. Its script
+tags sit after the app entry point so older recipes keep their adjacency anchors.
+The owner-preview workflow runs this step last. It changes no CSP, HTTP routes,
+host request validation, telemetry settings or existing lifecycle implementation.
+
+Reproduce checks with Python, Node and Playwright/Edge installed:
+
+```powershell
+python tests/collaboration_build.py
+# Use the printed directory's parent for the existing Node suite:
+Push-Location test-results/collaboration-integrated-<printed-id>
+$testFiles = @(Get-ChildItem tests/*.test.cjs | ForEach-Object { $_.FullName })
+node --test @testFiles
+Pop-Location
+$env:ATLAS_TEST_APP_DIR = '<printed STAGED_APP path>'
+node tests/collaboration_ui.cjs
+```
+
+Local validation: **390 Node tests passed** (377 existing + 13 new); full owner
+integration sequence and repeat-run idempotence passed. Isolated headless Edge
+checks covered draft creation, space separation, safe text rendering, intended
+visibility, redacted previews, separate proposals, existing save isolation,
+disabled file/invite actions, desktop/mobile layout, Escape/close, lock/reload,
+and the shutdown cleanup hook without cancelling the original handler.
+Browser tests abort all external requests; the only attempted external resource
+was the existing NASA visual. No actual native executable was run in this check.
+
+The baseline browser parse error was traced to `app/data/site-expansion-r8.js`,
+which ends mid-record at line 22. The collaboration browser test reports only
+that exact source's existing parse error separately; every other browser error
+fails the test. Existing catalog assertions are unchanged and still fail the
+150-record gate. A green collaboration regression is not a green owner build.
+Screenshots are synthetic fixtures under ignored `test-results/`.
