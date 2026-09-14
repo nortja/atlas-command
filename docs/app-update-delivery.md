@@ -5,16 +5,17 @@ automatically. This is a requirement, not a claim that auto-update is enabled.
 
 ## Current preview
 
-The latest tested catalog-intake milestone is commit
-`f9baa4583d5c93bc7749ea1429d5c1592bd94d31` on `develop/ui-directions`.
-Owner-preview run **34888673347** completed successfully: 427 source/logic tests,
-Windows packaging, native catalog import/undo, storage/restart, camera, UI,
-privacy and encrypted-team tests passed. Six browser regression suites also passed
+The latest tested workspace-recovery milestone is commit
+`c2a880be1dd66dfd37cd925822888d4d91ed75a6` on `develop/ui-directions`.
+Owner-preview run **34891320757** completed successfully: 436 source/logic tests,
+Windows packaging, native catalog import/undo, guarded saves and reviewed record-backup restoration,
+storage/restart, camera, UI,
+privacy and encrypted-team tests passed. Seven browser regression suites also passed
 locally. The optional installer copy regression passed on the hosted runner.
 
-- Run: https://github.com/nortja/atlas-command/actions/runs/34888673347
-- Download: https://github.com/nortja/atlas-command/actions/runs/34888673347/artifacts/10366385780
-- Artifact: `atlas-owner-preview-windows-x64`, expires September 17, 2026 at 19:50 UTC.
+- Run: https://github.com/nortja/atlas-command/actions/runs/34891320757
+- Download: https://github.com/nortja/atlas-command/actions/runs/34891320757/artifacts/10366809855
+- Artifact: `atlas-owner-preview-windows-x64`, expires September 17, 2026 at 20:20 UTC.
 
 Sign in with repository access, download the artifact, extract it and the enclosed
 preview ZIP into a fresh folder, close the older Atlas instance, then run
