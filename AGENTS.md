@@ -54,6 +54,8 @@
   missing information or access needed for the blocked task.
 - Reaffirmed for each extended session: select and finish an integrated milestone;
   do not treat internal build/test checkpoints as requests for device testing.
+- Carry nonblocking feedback and remaining recovery/release limitations into the
+  final checkpoint, while continuing the authorized batch without routine pauses.
 
 ## Source, generated output, and validation
 
