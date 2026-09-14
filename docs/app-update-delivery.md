@@ -5,23 +5,29 @@ automatically. This is a requirement, not a claim that auto-update is enabled.
 
 ## Current preview
 
-The tested collaboration milestone is commit
-`554d352b0332e68af7a0e2a528bfaef302fc98c7` on `develop/ui-directions`.
-Owner-preview run 34876280684 completed successfully on attempt 2. Its first
-attempt failed with a Windows connection reset in the existing native smoke
-test while checking a rejected write. The unchanged rerun passed; this is not
-evidence that the intermittent transport failure has been permanently fixed.
-GitHub's email about attempt 1 remains an accurate historical notification.
+The latest tested catalog-intake milestone is commit
+`f9baa4583d5c93bc7749ea1429d5c1592bd94d31` on `develop/ui-directions`.
+Owner-preview run **34888673347** completed successfully: 427 source/logic tests,
+Windows packaging, native catalog import/undo, storage/restart, camera, UI,
+privacy and encrypted-team tests passed. Six browser regression suites also passed
+locally. The optional installer copy regression passed on the hosted runner.
 
-- Run: https://github.com/nortja/atlas-command/actions/runs/34876280684
-- Download: https://github.com/nortja/atlas-command/actions/runs/34876280684/artifacts/10361880258
-- Artifact: `atlas-owner-preview-windows-x64`, expires September 17, 2026.
+- Run: https://github.com/nortja/atlas-command/actions/runs/34888673347
+- Download: https://github.com/nortja/atlas-command/actions/runs/34888673347/artifacts/10366385780
+- Artifact: `atlas-owner-preview-windows-x64`, expires September 17, 2026 at 19:50 UTC.
 
 Sign in with repository access, download the artifact, extract it and the enclosed
-preview ZIP into a fresh folder, then run `AtlasCommand.exe`. Preserve a separate
-encrypted team backup. This is an unsigned development preview, not an installer.
-Do not bypass endpoint security. Expiring Actions artifacts are test delivery,
-not a durable automatic update feed.
+preview ZIP into a fresh folder, close the older Atlas instance, then run
+`AtlasCommand.exe`. The package also contains README-FIRST.txt and an optional
+per-user installer script. Follow the included instructions; do not change script
+execution policy or bypass endpoint security. Preserve a separate encrypted team
+backup. This is an unsigned development preview. Expiring Actions artifacts are
+test delivery, not a durable automatic update feed.
+
+Earlier failure emails are historical. The rejected-request connection-reset
+handling and isolated Edge cleanup were fixed in the prior Earth milestone.
+During this milestone, new native test polling conflicted with strict CSP; the
+test now waits on UI elements without weakening CSP. The final run above is green.
 
 ## Delivery decision and next steps
 

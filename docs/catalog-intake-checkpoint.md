@@ -30,13 +30,23 @@ checks cover pagination, selection, escaped input, all supported formats, save
 failure/retry, undo, reload persistence, evidence navigation and phone-width layout.
 Owner-preview compilation passed locally without installation or launch.
 
-All six final browser regression suites passed, and the integrated milestone was
-pushed as 9f3f39e on develop/ui-directions. Hosted native validation is in progress.
-A delivery check also found the optional installer used Copy-Item -LiteralPath
-with a wildcard. It now enumerates source items and copies each literal path.
-Its new real-filesystem copy regression was blocked locally by Windows script
-execution policy; no policy was changed. The hosted Windows suite must pass it
-before delivery. Native execution remains restricted to the disposable runner.
+All six final browser regression suites passed. Final executable/package source:
+**f9baa4583d5c93bc7749ea1429d5c1592bd94d31**. Hosted Windows run **34888673347**
+passed all **427** source/logic tests, package verification and native suites,
+including catalog import/undo, strict request boundaries, atomic save/restart,
+cameras, layouts, lifecycle, encrypted team persistence and DPAPI identity.
+The optional installer copy regression also passed on the hosted runner; local
+script policy was preserved. New native polling uses locators compatible with the
+existing CSP. No CSP exceptions were added.
+
+Download: https://github.com/nortja/atlas-command/actions/runs/34888673347/artifacts/10366385780
+Artifact expires September 17, 2026 at 19:50 UTC. See app-update-delivery.md for
+portable launch and the still-manual preview update channel.
+
+Milestone complete. Next substantial candidate: revision-aware catalog storage
+and media-inclusive recovery, with stale-instance conflict tests before any
+future synchronization. Keep production networking and Store publication paused.
+Physical touchscreen feel remains an owner device check.
 
 ## Storage and privacy limits
 
@@ -63,7 +73,7 @@ before delivery. Native execution remains restricted to the disposable runner.
   to three decimals. Comparisons show core research fields; extended metadata is
   not silently merged. Resolve conflicts in the source file and review again.
 
-## Consolidated device review (after native CI)
+## Consolidated device review
 
 Install/extract the new private owner preview using its included instructions.
 Open Overview → Catalog review; search and filter evidence, then tap a site.
