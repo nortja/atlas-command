@@ -131,6 +131,10 @@ class NativeSmoke:
                 page.route('https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png', lambda route: route.abort())
                 page.goto(self.url, wait_until='domcontentloaded', timeout=30000)
                 page.wait_for_function("!!window.AtlasTest && !document.getElementById('boot')", timeout=30000)
+                # Startup schedules an asynchronous save. Check the persisted state,
+                # not the transient SAVING/UNSAVED badge between paint and completion.
+                page.evaluate('AtlasTest.flush()')
+                page.get_by_text('SAVED ON THIS PC', exact=True).wait_for()
                 document = page.content()
                 if 'id="boot"' in document:
                     raise AssertionError('The native-served renderer did not clear its startup screen.')
