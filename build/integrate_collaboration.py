@@ -45,3 +45,5 @@ for name, source in outputs.items():
     if source != path.read_text('utf-8'):
         path.write_text(source, encoding='utf-8', newline='\n')
 print('Integrated session-only collaboration shell; encrypted storage and sync remain unavailable.')
+import runpy
+runpy.run_path(str(ROOT / 'build/integrate_team_vault.py'))

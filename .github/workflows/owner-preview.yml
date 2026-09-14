@@ -91,6 +91,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'HD planet UI runtime test failed.' }
           python tests/power_lifecycle_ui.py
           if ($LASTEXITCODE -ne 0) { throw 'Power lifecycle runtime test failed.' }
+          python tests/team_vault_native.py
+          if ($LASTEXITCODE -ne 0) { throw 'Encrypted team workspace runtime test failed.' }
       - name: Verify owner preview artifact
         shell: pwsh
         run: |

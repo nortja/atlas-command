@@ -261,6 +261,61 @@ internal static class AtlasHost
     {
         try { if (LogPath == null) return; lock (LogLock) { if (File.Exists(LogPath) && new FileInfo(LogPath).Length > 1024*1024) File.Move(LogPath, LogPath + "." + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + ".old"); File.AppendAllText(LogPath, DateTime.UtcNow.ToString("o") + " " + message + Environment.NewLine, new UTF8Encoding(false)); } } catch { }
     }
+    // Ciphertext only. Catch locally so parser/file errors never reach diagnostic logs.
+    static long TeamRevision(object value)
+    {
+        if (!(value is int) && !(value is long)) throw new InvalidDataException();
+        long n = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+        if (n < 0 || n >= 9007199254740991L) throw new InvalidDataException();
+        return n;
+    }
+    static void TeamBase64(object value, int exact)
+    {
+        string s = value as string;
+        if (s == null || s.Length == 0 || s.Length > 12 * 1024 * 1024) throw new InvalidDataException();
+        byte[] b = Convert.FromBase64String(s);
+        if (Convert.ToBase64String(b) != s || (exact > 0 ? b.Length != exact : b.Length < 16)) throw new InvalidDataException();
+    }
+    static Dictionary<string,object> TeamEnvelope(object value)
+    {
+        var e = value as Dictionary<string,object>;
+        if (e == null || e.Count != 8) throw new InvalidDataException();
+        foreach (string key in new string[]{"version","id","revision","purpose","iterations","salt","iv","ciphertext"}) if (!e.ContainsKey(key)) throw new InvalidDataException();
+        if (TeamRevision(e["version"]) != 1 || TeamRevision(e["iterations"]) != 600000 || TeamRevision(e["revision"]) < 1 || !(e["id"] is string) || !Regex.IsMatch((string)e["id"], "\\A[-a-zA-Z0-9:]{1,160}\\z") || !Object.Equals(e["purpose"],"workspace")) throw new InvalidDataException();
+        TeamBase64(e["salt"],16); TeamBase64(e["iv"],12); TeamBase64(e["ciphertext"],0);
+        return e;
+    }
+    static void HandleTeamVault(NetworkStream stream, string method, Dictionary<string,string> headers, byte[] body)
+    {
+        try {
+            string requested;
+            if (!headers.TryGetValue("X-Atlas-Request",out requested) || requested != "local") { Error(stream,403,"Local action header required"); return; }
+            if (method != "GET" && method != "POST") { Error(stream,405,"Unsupported vault operation"); return; }
+            string directory = Path.Combine(AppData,"TeamWorkspace"), path = Path.Combine(directory,"vault.json");
+            lock (DataLock) {
+                string previous = null;
+                if (File.Exists(path)) { if (new FileInfo(path).Length > 12 * 1024 * 1024) throw new InvalidDataException(); previous = File.ReadAllText(path,Utf8); }
+                long revision = previous == null ? 0 : TeamRevision(TeamEnvelope(Json().DeserializeObject(previous))["revision"]);
+                if (method == "GET") { SendJson(stream,previous ?? "null"); return; }
+                RequireType(headers,"application/json");
+                if (body.Length > 12 * 1024 * 1024) throw new InvalidDataException();
+                var request = Json().DeserializeObject(Utf8.GetString(body)) as Dictionary<string,object>;
+                if (request == null || request.Count != 2 || !request.ContainsKey("expected") || !request.ContainsKey("envelope")) throw new InvalidDataException();
+                var envelope = TeamEnvelope(request["envelope"]);
+                if (TeamRevision(request["expected"]) != revision || TeamRevision(envelope["revision"]) != revision + 1) { Error(stream,409,"Private storage conflict"); return; }
+                string serialized = Json().Serialize(envelope);
+                Directory.CreateDirectory(directory);
+                string temporary = Path.Combine(directory,"vault-" + Guid.NewGuid().ToString("N") + ".tmp");
+                try {
+                    byte[] encrypted = Utf8.GetBytes(serialized);
+                    using (var file = new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)) { file.Write(encrypted,0,encrypted.Length); file.Flush(true); }
+                    if (File.Exists(path)) File.Replace(temporary,path,path + ".bak"); else File.Move(temporary,path);
+                } finally { if (File.Exists(temporary)) File.Delete(temporary); }
+                SendJson(stream,"{\"ok\":true}");
+            }
+        } catch { Error(stream,400,"Private storage unavailable or invalid"); }
+    }
+
     static JavaScriptSerializer Json() { return new JavaScriptSerializer { MaxJsonLength = MaxJson, RecursionLimit = 64 }; }
     static string ReadLine(NetworkStream s, ref int total)
     {
@@ -322,6 +377,7 @@ internal static class AtlasHost
         try {
             if (rel.StartsWith("api/camera/",StringComparison.Ordinal)) { if (method != "POST") { Error(stream,405,"Camera viewing requires an explicit local action"); return; } SendCamera(stream,rel.Substring("api/camera/".Length)); return; }
             if (rel == "api/heartbeat" && method == "GET") { SendJson(stream,"{\"ok\":true}"); return; }
+            if (rel == "api/team-vault") { HandleTeamVault(stream,method,headers,body); return; }
             if (rel == "api/state") {
                 if (method == "GET") {
                     lock (DataLock) {
@@ -364,7 +420,7 @@ internal static class AtlasHost
             if (method != "GET" && !head) { Error(stream,405,"Method not allowed"); return; }
             if (rel == "") rel = "index.html";
             // Serve the renderer only, never source/host files, data-folder backups, or directory listings.
-            bool allowed = rel == "src/collaboration-shell.css" || rel == "src/collaboration-shell.js" || rel == "src/collaboration-model.js" || rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "src/next-ui.css" || rel == "src/workspace-layout.js" || rel == "src/weather-units.js" || rel == "src/live-weather.js" || rel == "src/live-weather.css" || rel == "src/data-refresh.js" || rel == "src/cameras.js" || rel == "src/cameras.css" || rel == "src/ui-directions.js" || rel == "src/ui-directions.css" || rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-diagnostics.js" || rel == "src/field-camera-onvif.js" || rel == "src/field-camera-transport.js" || rel == "src/field-camera-layout.js" || rel == "src/field-camera-recordings.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/field-camera-ux.js" || rel == "src/field-camera-ux.css" || rel == "src/field-camera-auth.js" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/lidar.js" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
+            bool allowed = rel == "src/team-shell.css" || rel == "src/team-shell.js" || rel == "src/team-vault.js" || rel == "src/team-model.js" || rel == "src/team-crypto.js" || rel == "src/collaboration-shell.css" || rel == "src/collaboration-shell.js" || rel == "src/collaboration-model.js" || rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "src/next-ui.css" || rel == "src/workspace-layout.js" || rel == "src/weather-units.js" || rel == "src/live-weather.js" || rel == "src/live-weather.css" || rel == "src/data-refresh.js" || rel == "src/cameras.js" || rel == "src/cameras.css" || rel == "src/ui-directions.js" || rel == "src/ui-directions.css" || rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-diagnostics.js" || rel == "src/field-camera-onvif.js" || rel == "src/field-camera-transport.js" || rel == "src/field-camera-layout.js" || rel == "src/field-camera-recordings.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/field-camera-ux.js" || rel == "src/field-camera-ux.css" || rel == "src/field-camera-auth.js" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/lidar.js" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
             string ext = Path.GetExtension(rel).ToLowerInvariant();
             string type = ext == ".html" ? "text/html; charset=utf-8" : ext == ".js" ? "text/javascript; charset=utf-8" : ext == ".css" ? "text/css; charset=utf-8" : ext == ".svg" ? "image/svg+xml" : "";
             if (!allowed || type == "") { Error(stream,404,"Not found"); return; }

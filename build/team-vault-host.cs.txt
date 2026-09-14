@@ -1,0 +1,55 @@
+    // Ciphertext only. Catch locally so parser/file errors never reach diagnostic logs.
+    static long TeamRevision(object value)
+    {
+        if (!(value is int) && !(value is long)) throw new InvalidDataException();
+        long n = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+        if (n < 0 || n >= 9007199254740991L) throw new InvalidDataException();
+        return n;
+    }
+    static void TeamBase64(object value, int exact)
+    {
+        string s = value as string;
+        if (s == null || s.Length == 0 || s.Length > 12 * 1024 * 1024) throw new InvalidDataException();
+        byte[] b = Convert.FromBase64String(s);
+        if (Convert.ToBase64String(b) != s || (exact > 0 ? b.Length != exact : b.Length < 16)) throw new InvalidDataException();
+    }
+    static Dictionary<string,object> TeamEnvelope(object value)
+    {
+        var e = value as Dictionary<string,object>;
+        if (e == null || e.Count != 8) throw new InvalidDataException();
+        foreach (string key in new string[]{"version","id","revision","purpose","iterations","salt","iv","ciphertext"}) if (!e.ContainsKey(key)) throw new InvalidDataException();
+        if (TeamRevision(e["version"]) != 1 || TeamRevision(e["iterations"]) != 600000 || TeamRevision(e["revision"]) < 1 || !(e["id"] is string) || !Regex.IsMatch((string)e["id"], "\\A[-a-zA-Z0-9:]{1,160}\\z") || !Object.Equals(e["purpose"],"workspace")) throw new InvalidDataException();
+        TeamBase64(e["salt"],16); TeamBase64(e["iv"],12); TeamBase64(e["ciphertext"],0);
+        return e;
+    }
+    static void HandleTeamVault(NetworkStream stream, string method, Dictionary<string,string> headers, byte[] body)
+    {
+        try {
+            string requested;
+            if (!headers.TryGetValue("X-Atlas-Request",out requested) || requested != "local") { Error(stream,403,"Local action header required"); return; }
+            if (method != "GET" && method != "POST") { Error(stream,405,"Unsupported vault operation"); return; }
+            string directory = Path.Combine(AppData,"TeamWorkspace"), path = Path.Combine(directory,"vault.json");
+            lock (DataLock) {
+                string previous = null;
+                if (File.Exists(path)) { if (new FileInfo(path).Length > 12 * 1024 * 1024) throw new InvalidDataException(); previous = File.ReadAllText(path,Utf8); }
+                long revision = previous == null ? 0 : TeamRevision(TeamEnvelope(Json().DeserializeObject(previous))["revision"]);
+                if (method == "GET") { SendJson(stream,previous ?? "null"); return; }
+                RequireType(headers,"application/json");
+                if (body.Length > 12 * 1024 * 1024) throw new InvalidDataException();
+                var request = Json().DeserializeObject(Utf8.GetString(body)) as Dictionary<string,object>;
+                if (request == null || request.Count != 2 || !request.ContainsKey("expected") || !request.ContainsKey("envelope")) throw new InvalidDataException();
+                var envelope = TeamEnvelope(request["envelope"]);
+                if (TeamRevision(request["expected"]) != revision || TeamRevision(envelope["revision"]) != revision + 1) { Error(stream,409,"Private storage conflict"); return; }
+                string serialized = Json().Serialize(envelope);
+                Directory.CreateDirectory(directory);
+                string temporary = Path.Combine(directory,"vault-" + Guid.NewGuid().ToString("N") + ".tmp");
+                try {
+                    byte[] encrypted = Utf8.GetBytes(serialized);
+                    using (var file = new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)) { file.Write(encrypted,0,encrypted.Length); file.Flush(true); }
+                    if (File.Exists(path)) File.Replace(temporary,path,path + ".bak"); else File.Move(temporary,path);
+                } finally { if (File.Exists(temporary)) File.Delete(temporary); }
+                SendJson(stream,"{\"ok\":true}");
+            }
+        } catch { Error(stream,400,"Private storage unavailable or invalid"); }
+    }
+

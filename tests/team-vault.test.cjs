@@ -44,3 +44,10 @@ test('private modules avoid catalog exports, telemetry, logging and unsafe HTML'
  }
  const host=fs.readFileSync(path.join(__dirname,'../build/team-vault-host.cs.txt'),'utf8');assert.doesNotMatch(host,/Log\(|ex\.Message|SendFile\(/);assert.match(host,/File\.Replace/);assert.match(host,/Private storage conflict/);
 });
+test('encrypted team assets and native route are explicitly integrated without CSP expansion',()=>{
+ for(const name of ['app/index.html','app/workspace-preview.html','native/AtlasHost.cs','build/Build-OwnerPreview.ps1','build/Build-Store.ps1']){
+  const source=fs.readFileSync(path.join(__dirname,'..',name),'utf8');for(const asset of ['team-crypto.js','team-model.js','team-vault.js','team-shell.js','team-shell.css'])assert(source.includes('src/'+asset),name+': '+asset);
+ }
+ const recipe=fs.readFileSync(path.join(__dirname,'../build/integrate_team_vault.py'),'utf8');assert.doesNotMatch(recipe,/connect-src|unsafe-eval|unsafe-inline/);
+ const workflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/owner-preview.yml'),'utf8');assert(workflow.includes('python tests/team_vault_native.py'));
+});

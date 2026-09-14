@@ -28,7 +28,7 @@ const server=http.createServer((req,res)=>{
     assert.deepEqual(startupErrors,[]);
     const original=await page.evaluate(()=>JSON.stringify(AtlasWorkspace.sites.list()));
     const count=await page.locator('.site-item').count();assert(count>=26);
-    await page.locator('#collaborationBtn').click();
+    await page.evaluate(()=>AtlasCollaboration.open());
     await page.getByLabel('Space name',{exact:true}).fill('Caucasus field research');
     await page.getByRole('button',{name:'Create session space',exact:true}).click();
     assert(await page.getByRole('button',{name:'Invite researchers',exact:true}).isDisabled());
@@ -59,7 +59,7 @@ const server=http.createServer((req,res)=>{
     await page.getByRole('button',{name:'Private chat',exact:true}).click();
     assert.equal(await page.getByLabel('Message draft',{exact:true}).inputValue(),'unfinished-marker');
     await page.getByRole('button',{name:'Close',exact:true}).click();
-    await page.locator('#collaborationBtn').click();
+    await page.evaluate(()=>AtlasCollaboration.open());
     assert.equal(await page.getByLabel('Message draft',{exact:true}).inputValue(),'unfinished-marker');
     await page.getByLabel('Space name',{exact:true}).fill('Second session space');
     await page.getByRole('button',{name:'Create session space',exact:true}).click();
@@ -83,7 +83,7 @@ const server=http.createServer((req,res)=>{
     assert.deepEqual(errors,[],'No errors during collaboration interactions');
     await page.reload();await page.waitForFunction(()=>!!window.AtlasWorkspace);
     const reloadErrors=errors.splice(0);assert.deepEqual(reloadErrors,[]);
-    await page.locator('#collaborationBtn').click();assert.equal(await page.locator('.collab-space').count(),0);
+    await page.evaluate(()=>AtlasCollaboration.open());assert.equal(await page.locator('.collab-space').count(),0);
     await page.getByLabel('Space name',{exact:true}).fill('Shutdown test');
     await page.getByRole('button',{name:'Create session space',exact:true}).click();
     await page.getByRole('button',{name:'Close',exact:true}).click();
@@ -93,7 +93,7 @@ const server=http.createServer((req,res)=>{
       const b=document.createElement('button');b.id='shutdownBtn';let ran=false;
       b.onclick=()=>{ran=true;};document.body.append(b);b.click();b.remove();return ran;
     }),true);
-    await page.locator('#collaborationBtn').click();assert.equal(await page.locator('.collab-space').count(),0);
+    await page.evaluate(()=>AtlasCollaboration.open());assert.equal(await page.locator('.collab-space').count(),0);
     const stored=await page.evaluate(()=>JSON.stringify({...localStorage}));
     for(const marker of ['private-message-marker','private-note-marker','proposal-marker','unfinished-marker','Caucasus field research'])assert(!stored.includes(marker));
     assert.deepEqual(await page.evaluate(()=>AtlasPrivacy.read()),{crashReports:false,performance:false,featureUsage:false,researchContributions:false});
