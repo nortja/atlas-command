@@ -30,6 +30,13 @@ def main():
             assert second.returncode==0,'Second launch did not return after asking the existing Atlas session to reopen.'
             assert host.process.poll() is None,'Second launch must not replace the existing native host.'
             print('PASS: Launching Atlas again while it is already running reopens the validated local session instead of blocking on an already-running dialog.',flush=True)
+            # The second-launch check opened a real Edge profile alongside this
+            # headless driver. Isolate the single writer before changing/saving
+            # the globe, and prevent Edge process reuse from defeating the next
+            # start() check's deliberately strict parent-process observation.
+            # This closes only the exact disposable profile, not the app host.
+            host.close_profile(appdata/'Browser')
+            assert host.process.poll() is None
             selected_id=page.evaluate("AtlasWorkspace.sites.list().find(s=>s.name!=='Göbekli Tepe').id")
             page.evaluate("id=>{AtlasTest.select(id,true);AtlasTest.globe.spin=false;AtlasTest.globe.target=null;AtlasTest.globe.lat=34.25;AtlasTest.globe.lon=-118.45;AtlasTest.globe.zoom=1.73;}",selected_id)
             page.locator('#shutdownBtn').dispatch_event('click')
