@@ -1,7 +1,7 @@
 """Phase 2 exact assets and guarded ciphertext-only native storage."""
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
-assets = ['src/team-crypto.js', 'src/team-model.js', 'src/team-session.js', 'src/team-vault.js', 'src/team-shell.js', 'src/team-shell.css']
+assets = ['src/team-crypto.js', 'src/team-model.js', 'src/team-session.js', 'src/team-vault.js', 'src/team-review.js', 'src/team-shell.js', 'src/team-shell.css']
 for name in ['app/index.html', 'app/workspace-preview.html']:
     p = ROOT / name
     source = p.read_text('utf-8')

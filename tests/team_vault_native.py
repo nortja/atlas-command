@@ -106,6 +106,24 @@ def main():
             page.get_by_role('button', name='Unlock workspace', exact=True).click()
             page.get_by_role('button', name='Private chat', exact=True).click()
             page.locator('#teamVaultDialog article').filter(has_text=SECRET).wait_for()
+            page.get_by_label('Search saved research', exact=True).fill(SECRET)
+            assert page.locator('.team-record-list article').count() == 1
+            page.get_by_role('button', name='Backup & privacy', exact=True).click()
+            with page.expect_download() as download_info:
+                page.get_by_role('button', name='Export encrypted backup', exact=True).click()
+            backup = Path(download_info.value.path()).read_bytes()
+            assert SECRET.encode() not in backup and PASS.encode() not in backup
+            revision_before_review = json.loads(vault.read_text('utf-8'))['revision']
+            page.get_by_label('Encrypted backup file', exact=True).set_input_files({'name': 'recovery.json', 'mimeType': 'application/json', 'buffer': backup})
+            page.get_by_label('Backup passphrase', exact=True).fill(PASS)
+            page.get_by_role('button', name='Inspect encrypted backup', exact=True).click()
+            page.get_by_text('Review before replacing', exact=True).wait_for()
+            assert json.loads(vault.read_text('utf-8'))['revision'] == revision_before_review
+            page.get_by_label('Replace the local team workspace; use the backup passphrase afterward', exact=True).check()
+            page.get_by_role('button', name='Restore reviewed backup', exact=True).click()
+            page.wait_for_function('async expected => (await AtlasTeamVault.storage().read()).revision > expected', arg=revision_before_review)
+            page.get_by_role('button', name='Private chat', exact=True).click()
+            page.locator('#teamVaultDialog article').filter(has_text=SECRET).wait_for()
             browser.close()
         host.stop()
         host.start()

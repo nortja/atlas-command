@@ -18,11 +18,12 @@ function diff(before,after){
   return rows;
 }
 function memberRoles(role,targetRole){if(role==='Owner'&&targetRole!=='Owner')return ['Admin','Researcher','Viewer'];if(role==='Admin'&&!['Owner','Admin'].includes(targetRole))return ['Researcher','Viewer'];return [];}
+function auditPage(events,{role='all',action='all',page=0}={}){const matching=events.filter(a=>(role==='all'||a.role===role)&&(action==='all'||a.action===action)).slice().reverse(),pages=Math.max(1,Math.ceil(matching.length/50));page=Math.max(0,Math.min(Number.isSafeInteger(page)?page:0,pages-1));return {events:matching.slice(page*50,page*50+50),page,pages,total:matching.length};}
 function inactivity({now=()=>performance.now(),onLock,idleMs=600000,hiddenMs=60000}){
   let active=false,last=0,hiddenAt=null;
   function check(){if(active&&(now()-last>=idleMs||(hiddenAt!==null&&now()-hiddenAt>=hiddenMs))){active=false;onLock();return false;}return active;}
   return Object.freeze({start(){if(!active){active=true;last=now();hiddenAt=null;}},stop(){active=false;hiddenAt=null;},touch(){if(check())last=now();},hidden(value){if(!check())return;if(value){if(hiddenAt===null)hiddenAt=now();}else hiddenAt=null;},check});
 }
 const auditLabels=Object.freeze({workspace_created:'Workspace created',legacy_migrated:'Earlier workspace upgraded',record_created:'Research saved',record_revised:'Research revised',visibility_changed:'Visibility changed',proposal_created:'Edit proposed',proposal_approved:'Proposal approved',proposal_rejected:'Proposal rejected',file_added:'File added',file_revised:'File revised',file_export:'File downloaded',member_enrolled:'Member activated',member_role_changed:'Member role changed',member_removed:'Member removed',backup_export:'Encrypted backup exported',backup_import:'Encrypted backup restored',passphrase_changed:'Passphrase changed'});
-return Object.freeze({select,diff,memberRoles,inactivity,auditLabels});
+return Object.freeze({select,diff,memberRoles,inactivity,auditLabels,auditPage});
 });

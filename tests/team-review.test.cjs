@@ -10,6 +10,10 @@ test('bounded comparisons preserve text and distinguish added, removed and uncha
  const rows=H.diff('one\nold\nlast','one\n<img src=x>\nlast');assert.deepEqual(rows,[{type:'same',text:'one'},{type:'removed',text:'old'},{type:'added',text:'<img src=x>'},{type:'same',text:'last'}]);assert.equal(H.diff('same','same')[0].type,'same');assert.equal(H.diff('\n'.repeat(8000),'new').length,2);
  assert.deepEqual(H.memberRoles('Admin','Admin'),[]);assert.deepEqual(H.memberRoles('Admin','Researcher'),['Researcher','Viewer']);assert.deepEqual(H.memberRoles('Viewer','Researcher'),[]);
 });
+test('audit filtering and paging remain bounded and asset integration is exact',()=>{
+ const events=Array.from({length:65},(_,i)=>({sequence:i+1,role:i<60?'Owner':'Viewer',action:'file_export'}));const first=H.auditPage(events),second=H.auditPage(events,{page:1});assert.equal(first.events.length,50);assert.equal(first.events[0].sequence,65);assert.equal(second.events.length,15);assert.equal(H.auditPage(events,{role:'Viewer'}).total,5);assert.equal(H.auditPage(events,{action:'backup_import',page:10}).page,0);assert.equal(events[0].sequence,1);
+ const fs=require('node:fs'),path=require('node:path');for(const name of ['app/index.html','app/workspace-preview.html','native/AtlasHost.cs','build/Build-OwnerPreview.ps1','build/Build-Store.ps1'])assert(fs.readFileSync(path.join(__dirname,'..',name),'utf8').includes('src/team-review.js'));
+});
 test('inactivity locks once; returning from a hidden page cannot reset an expired deadline',()=>{
  let now=0,locks=0;const idle=H.inactivity({now:()=>now,onLock:()=>locks++,idleMs:100,hiddenMs:20});idle.start();now=50;idle.touch();now=140;assert(idle.check());now=150;assert(!idle.check());assert.equal(locks,1);idle.touch();idle.check();assert.equal(locks,1);
  idle.start();idle.hidden(true);now=171;idle.hidden(false);idle.touch();assert.equal(locks,2);idle.start();idle.stop();now=999;idle.check();assert.equal(locks,2);
