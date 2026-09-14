@@ -167,6 +167,25 @@ class NativeSmoke:
         self.passed('Path traversal, executable serving and direct workspace serving are refused')
         self.expect('POST', 'api/state', 403, body=b'{}', headers={'Content-Type': 'application/json'})
         self.passed('An unmarked cross-context write is refused')
+        before_rejection = self.read_state()
+        parsed = urlsplit(self.url)
+        for _ in range(4):
+            connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=3)
+            try:
+                connection.putrequest('POST', parsed.path.rsplit('/',1)[0] + '/api/state')
+                connection.putheader('Content-Type','application/json')
+                connection.putheader('Content-Length','2')
+                connection.endheaders()
+                time.sleep(0.03)  # Body intentionally arrives after the rejection decision.
+                connection.send(b'{}')
+                response = connection.getresponse()
+                assert response.status == 403
+                assert response.read() == b'Local action header required'
+            finally:
+                connection.close()
+        assert self.read_state() == before_rejection
+        self.passed('Delayed unmarked POST bodies receive 403 without retries or workspace mutation')
+
         initial = {'schemaVersion': 1, 'sites': [
             {'id': 'native-qa', 'name': 'Synthetic QA site', 'lat': 0, 'lon': 0,
              'category': 'personal', 'notes': 'Test-only note with Unicode: Göbekli'}],

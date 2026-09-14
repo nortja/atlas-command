@@ -57,3 +57,13 @@ backup separately. Check Earth rotation/zoom and site alignment; try Earth only
 and Overview; toggle Touch controls and, on touch hardware, drag and pinch. Confirm
 research panels and Teams still reopen. This remains a development ZIP with manual
 updates; the separate automatic release-update requirement is not implemented here.
+
+## Native validation corrections
+
+The first native run repeated the earlier unmarked-write TCP reset. Rejection now
+sends the same 403 before dispatch, half-closes sending, and discards only a declared
+body of at most 8192 bytes within a 250 ms monotonic deadline. Discarded bytes are
+never parsed or logged and the scratch buffer is cleared. Authentication, origin,
+path, method and data limits remain unchanged. Four native delayed-body requests
+must receive the exact 403 without retries and preserve the saved workspace.
+Static serving also explicitly recognizes the allowlisted local PNG's MIME type.
