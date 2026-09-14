@@ -24,11 +24,8 @@ const server=http.createServer((req,res)=>{
     diagnostics.on('Runtime.exceptionThrown',({exceptionDetails:d})=>errors.push({message:d.exception?.description||d.text,url:d.url||''}));
     await page.route('**/*',route=>{if(route.request().url().startsWith(base+'/'))return route.continue();external.push(route.request().url());return route.abort();});
     await page.goto(base);await page.waitForFunction(()=>!!window.AtlasWorkspace);
-    // Track the known truncated R8 baseline separately; never allow an error from
-    // collaboration or any other file. The existing catalog QC remains unchanged.
     const startupErrors=errors.splice(0);
-    assert(startupErrors.every(e=>e.message.includes('Unexpected end of input')&&e.url===base+'/data/site-expansion-r8.js'),JSON.stringify(startupErrors));
-    if(startupErrors.length)console.log('BASELINE: site-expansion-r8.js is truncated; catalog QC remains failing.');
+    assert.deepEqual(startupErrors,[]);
     const original=await page.evaluate(()=>JSON.stringify(AtlasWorkspace.sites.list()));
     const count=await page.locator('.site-item').count();assert(count>=26);
     await page.locator('#collaborationBtn').click();
@@ -85,8 +82,7 @@ const server=http.createServer((req,res)=>{
     await page.setViewportSize({width:1440,height:1000});
     assert.deepEqual(errors,[],'No errors during collaboration interactions');
     await page.reload();await page.waitForFunction(()=>!!window.AtlasWorkspace);
-    const reloadErrors=errors.splice(0);assert.equal(reloadErrors.length,startupErrors.length);
-    assert(reloadErrors.every(e=>e.message.includes('Unexpected end of input')&&e.url===base+'/data/site-expansion-r8.js'),JSON.stringify(reloadErrors));
+    const reloadErrors=errors.splice(0);assert.deepEqual(reloadErrors,[]);
     await page.locator('#collaborationBtn').click();assert.equal(await page.locator('.collab-space').count(),0);
     await page.getByLabel('Space name',{exact:true}).fill('Shutdown test');
     await page.getByRole('button',{name:'Create session space',exact:true}).click();

@@ -41,7 +41,9 @@ Copy-Item -LiteralPath (Join-Path $Root 'native\AtlasCommand.exe.config') -Desti
 Copy-Item -LiteralPath (Join-Path $Root 'packaging\owner-preview\Install-AtlasCommand.ps1') -Destination $Stage
 Copy-Item -LiteralPath (Join-Path $Root 'packaging\owner-preview\Uninstall-AtlasCommand.ps1') -Destination $Stage
 Copy-Item -LiteralPath (Join-Path $Root 'docs\RECOVERY.txt') -Destination (Join-Path $Stage 'RECOVERY.txt')
-$VersionSource=Join-Path $env:RUNNER_TEMP ('AtlasOwnerVersion-'+[guid]::NewGuid().ToString('N')+'.cs')
+$VersionDirectory=if($env:RUNNER_TEMP){$env:RUNNER_TEMP}else{Join-Path $Dist 'temp'}
+$null=New-Item -ItemType Directory -Force -Path $VersionDirectory
+$VersionSource=Join-Path $VersionDirectory ('AtlasOwnerVersion-'+[guid]::NewGuid().ToString('N')+'.cs')
 [IO.File]::WriteAllText($VersionSource,('using System.Reflection; [assembly: AssemblyVersion("'+$Config.version+'")] [assembly: AssemblyFileVersion("'+$Config.version+'")]'),[Text.UTF8Encoding]::new($false))
 try{
  $Exe=Join-Path $Stage 'AtlasCommand.exe'
