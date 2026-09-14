@@ -18,10 +18,53 @@ remain required. No production networking, Store publication or updater activati
 
 ## Checkpoint
 
-Repository, recent commits and CI inspected. Latest native run 34882445026 is green;
-older failures were resolved before that run. Extended-session preferences saved
-in AGENTS.md. Implementation has not yet been completed.
+Implemented the local intake model, full paged review, cross-page selection,
+duplicate/ID comparison, invalid-row feedback, persisted add-only commit, guarded
+session undo and evidence desk under Overview. CSV, JSON/workspace JSON, GeoJSON
+points, KML and KMZ retain the existing parsers. No curated records were changed.
+The selected-site API and appearance integration anchors are preserved; regression
+checks now catch broken generated syntax and missing site selection.
 
-Next: build/test the intake model and transaction service, then connect the import
-UI and evidence desk through the versioned AtlasWorkspace API. Keep diagnostics
-free of incoming document text. Review dialogs are local and do not publish data.
+Source/logic suite: 426 passing in the owner integration stage. Catalog browser
+checks cover pagination, selection, escaped input, all supported formats, save
+failure/retry, undo, reload persistence, evidence navigation and phone-width layout.
+Owner-preview compilation passed locally without installation or launch.
+
+Next checkpoint: finish the final six browser regression suites, commit/push the
+integrated milestone on develop/ui-directions, then verify the hosted Windows
+native workflow (including the new real-storage import/undo test). Native execution
+is deliberately restricted to the disposable hosted runner, not the owner's PC.
+
+## Storage and privacy limits
+
+- Incoming review objects are copied; callers cannot mutate the approved payload.
+  Only valid new rows are selectable. Duplicate and ID-conflict rows cannot write
+  over existing notes, dates, ratings, media or extended research metadata.
+- Review and undo bind to the local catalog and mission queue. Any intervening
+  change invalidates them. Undo is session-only and disappears on reload; it is
+  not a replacement for a backup. Unselected rows are never saved.
+- The bridge drains older scheduled writes, checks the review again, waits for
+  persistence and rolls back the in-memory catalog on a reported save failure.
+  This is a local-session guard, not a cross-window transaction protocol. Native
+  state storage still lacks compare-and-swap revisions; concurrent application
+  instances and uncertain responses after disk writes remain existing limitations.
+- The desk reads ordinary catalog records only. It never reads the encrypted team
+  vault, sends requests to source URLs, publishes contributions or enables telemetry.
+  Catalog imports are ordinary local catalog data, not encrypted team storage.
+  Keep confidential team research in Teams and its encrypted backup workflow.
+- Imported strings are escaped in the review, and malformed document contents do
+  not enter console diagnostics. Source/date/rating flags describe missing fields;
+  they are not evidence-quality scores. The Imported filter reflects the record's
+  existing origin label, which is preserved rather than rewritten.
+- Duplicate matching retains the established name/source plus coordinates rounded
+  to three decimals. Comparisons show core research fields; extended metadata is
+  not silently merged. Resolve conflicts in the source file and review again.
+
+## Consolidated device review (after native CI)
+
+Install/extract the new private owner preview using its included instructions.
+Open Overview → Catalog review; search and filter evidence, then tap a site.
+Import a small CSV or JSON file, deselect a row, confirm, and try Undo last import.
+Check Earth drag/pinch and touch controls on the physical touchscreen. Real device
+gesture feel and the chosen signed automatic-update channel remain owner review
+items; automatic updates are not activated by this milestone.

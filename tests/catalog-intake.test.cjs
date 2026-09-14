@@ -1,5 +1,9 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),C=require('../app/src/core.js'),I=require('../app/src/catalog-intake.js');
 const site=(name,extra={})=>C.normalizeSite({name,lat:10,lon:20,...extra},'import');
+test('integrated app parses and intake assets are bundled exactly once',()=>{
+ const fs=require('node:fs'),vm=require('node:vm'),app=fs.readFileSync('app/src/app.js','utf8');new vm.Script(app);assert.match(app,/selected:\(\)=>selected\?cloneForModule\(selected\):null/);
+ for(const file of ['app/index.html','app/workspace-preview.html']){const html=fs.readFileSync(file,'utf8');for(const asset of ['catalog-intake.js','catalog-intake-ui.js','catalog-intake.css'])assert.equal(html.split('src/'+asset).length-1,1,file+' '+asset);}
+});
 test('intake preserves curated metadata, lists every invalid row and compares duplicates without overwriting',()=>{
  const original=site('Curated',{notes:'Keep this',research:{citation:'Archive'},source:'https://example.org/a'}),before=JSON.stringify(original);
  const r=I.prepare([{...original,notes:'Changed'},site('New',{lat:11}),{name:'Invalid',lat:100,lon:0},site('Other',{id:original.id,lat:12})],[original]);
