@@ -2,6 +2,11 @@
 
 Status: development architecture for Atlas owner preview. This document does not provision keys, move tokens, connect wallets, or deploy contracts.
 
+September 14 follow-up: the offline readiness milestone adds synthetic disclosure
+reviews and a sponsorship-policy rehearsal to Phase A. It is not Phase C wallet,
+proof or testnet integration. See `midnight-readiness-milestone.md` for current
+threat boundaries, official-source checks and validation status.
+
 ## Product principles
 
 1. **Private by default.** Atlas should not collect user content, location history, camera media, notes, searches, wallet identifiers, or usage telemetry unless the user explicitly chooses to share a narrowly described field.

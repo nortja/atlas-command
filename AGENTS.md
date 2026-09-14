@@ -56,6 +56,8 @@
   do not treat internal build/test checkpoints as requests for device testing.
 - Carry nonblocking feedback and remaining recovery/release limitations into the
   final checkpoint, while continuing the authorized batch without routine pauses.
+- Continue substantial integrated batches after progress questions; answer the
+  question briefly and keep implementing until the batch is verified for review.
 
 ## Source, generated output, and validation
 
