@@ -44,3 +44,10 @@ test('legacy migration preserves private versions and shared catalog independenc
  const key=await C.context(OWNER),legacy=M.apply(M.create('legacy','owner','Legacy'),'owner',{type:'create',kind:'note',id:'note',body:SECRET,site:SECRET});const e=await C.seal(key,'legacy',1,'workspace',C.encode(legacy)),s=storage(e),v=V.create(s);await v.unlock(OWNER);assert.equal(v.view().records[0].versions[0].body,SECRET);assert.equal((await s.read()).revision,2);assert.equal(legacy.records[0].versions[0].body,SECRET);
  const saved=await s.read(),d=C.decode(await C.open(key,saved,'legacy','workspace'));assert(!JSON.stringify(d).includes(SECRET));assert.equal(d.security.version,3);
 });
+test('device secret uses CurrentUser DPAPI and new session assets are explicitly packaged',()=>{
+ const fs=require('node:fs'),path=require('node:path'),read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
+ const source=read('build/team-device-host.cs.txt');assert.match(source,/RandomNumberGenerator\.Create/);assert.match(source,/ProtectedData\.Protect\(secret,null,DataProtectionScope.CurrentUser\)/);assert.match(source,/ProtectedData\.Unprotect/);assert.doesNotMatch(source,/LocalMachine|Log\(|ex\.Message/);assert.match(source,/Array\.Clear\(secret/);
+ for(const p of ['app/index.html','app/workspace-preview.html','native/AtlasHost.cs','build/Build-OwnerPreview.ps1','build/Build-Store.ps1'])assert(read(p).includes('src/team-session.js'));
+ assert(read('.github/workflows/owner-preview.yml').includes("'build/team-device-host.cs.txt'"));
+ assert.doesNotMatch(read('app/src/team-session.js'),/console\.|sendBeacon|localStorage|sessionStorage|innerHTML|fetch\(/);
+});

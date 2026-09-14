@@ -1,0 +1,28 @@
+    // A local device anchor, not a workspace key or remotely valid credential.
+    static void HandleTeamDevice(NetworkStream stream, string method, Dictionary<string,string> headers)
+    {
+        byte[] secret = null;
+        try {
+            string requested;
+            if (!headers.TryGetValue("X-Atlas-Request",out requested) || requested != "local") { Error(stream,403,"Local action header required"); return; }
+            if (method != "POST") { Error(stream,405,"Explicit device action required"); return; }
+            string directory = Path.Combine(AppData,"TeamSecrets"), path = Path.Combine(directory,"device.bin");
+            lock (DataLock) {
+                if (File.Exists(path)) {
+                    if (new FileInfo(path).Length > 4096) throw new InvalidDataException();
+                    secret = ProtectedData.Unprotect(File.ReadAllBytes(path),null,DataProtectionScope.CurrentUser);
+                    if (secret.Length != 32) throw new InvalidDataException();
+                } else {
+                    secret = new byte[32]; using (var random = RandomNumberGenerator.Create()) random.GetBytes(secret);
+                    byte[] protectedBytes = ProtectedData.Protect(secret,null,DataProtectionScope.CurrentUser);
+                    Directory.CreateDirectory(directory);
+                    using (var file = new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None)) { file.Write(protectedBytes,0,protectedBytes.Length); file.Flush(true); }
+                }
+                byte[] fingerprint; using (var hash = SHA256.Create()) fingerprint = hash.ComputeHash(secret);
+                string id = BitConverter.ToString(fingerprint).Replace("-","").ToLowerInvariant();
+                SendJson(stream,"{\"id\":\"" + id + "\",\"protection\":\"windows-current-user\"}");
+            }
+        } catch { Error(stream,400,"Protected device identity unavailable"); }
+        finally { if (secret != null) Array.Clear(secret,0,secret.Length); }
+    }
+

@@ -22,7 +22,7 @@ if(Test-Path -LiteralPath $Zip){Remove-Item -LiteralPath $Zip -Force}
 $null=New-Item -ItemType Directory -Force -Path $Stage
 $RuntimeFiles=@(
  'index.html',
- 'src/collaboration-model.js','src/collaboration-shell.js','src/collaboration-shell.css','src/team-crypto.js','src/team-model.js','src/team-vault.js','src/team-shell.js','src/team-shell.css','src/app.js','src/core.js','src/globe.js','src/styles.css','src/next-ui.css','src/workspace-layout.js',
+ 'src/collaboration-model.js','src/collaboration-shell.js','src/collaboration-shell.css','src/team-crypto.js','src/team-model.js','src/team-vault.js','src/team-shell.js','src/team-shell.css','src/team-session.js','src/app.js','src/core.js','src/globe.js','src/styles.css','src/next-ui.css','src/workspace-layout.js',
  'src/weather-units.js','src/live-weather.js','src/live-weather.css','src/data-refresh.js',
  'src/cameras.js','src/cameras.css','src/ui-directions.js','src/ui-directions.css','src/ui-refinement.css',
  'src/field-cameras.js','src/field-camera-desk.js','src/field-cameras.css','src/field-camera-ux.js','src/field-camera-ux.css',

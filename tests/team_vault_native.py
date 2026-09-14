@@ -24,6 +24,13 @@ def main():
     errors, logs, requests = [], [], []
     try:
         host.start()
+        host.expect('POST', 'api/team-device', 403)
+        identity = json.loads(host.expect('POST', 'api/team-device', 200, headers=headers)[2])
+        assert identity['protection'] == 'windows-current-user' and len(identity['id']) == 64
+        device_path = appdata / 'TeamSecrets' / 'device.bin'
+        protected_device = device_path.read_bytes()
+        assert len(protected_device) > 32 and identity['id'].encode() not in protected_device
+        host.expect('GET', 'TeamSecrets/device.bin', 404)
         host.expect('GET', 'api/team-vault', 403)
         assert host.expect('GET', 'api/team-vault', 200, headers=headers)[2] == b'null'
         with sync_playwright() as pw:
@@ -43,13 +50,29 @@ def main():
             page.get_by_label('Text', exact=True).fill(SECRET)
             page.get_by_role('button', name='Save message', exact=True).click()
             page.locator('#teamVaultDialog article').filter(has_text=SECRET).wait_for()
+            page.get_by_role('button', name='Members', exact=True).click()
+            page.get_by_label('Member name', exact=True).fill('Native Viewer')
+            page.get_by_label('Role', exact=True).select_option('Viewer')
+            page.get_by_label('Enrollment passphrase', exact=True).fill('native viewer willow lantern stone')
+            page.get_by_role('button', name='Add local member', exact=True).click()
+            page.get_by_text('Native Viewer · Viewer', exact=True).wait_for()
+            page.get_by_role('button', name='Switch member', exact=True).click()
+            page.get_by_label('Local identity', exact=True).select_option(label='Native Viewer')
+            page.get_by_label('Member passphrase', exact=True).fill('native viewer willow lantern stone')
+            page.get_by_role('button', name='Sign in', exact=True).click()
+            page.get_by_role('button', name='Private chat', exact=True).click()
+            page.get_by_text('Viewer access · read only.', exact=True).wait_for()
+            assert page.locator('#teamVaultDialog article').count() == 0
+            assert page.get_by_role('button', name='Save message', exact=True).count() == 0
+            page.get_by_role('button', name='Backup & privacy', exact=True).click()
+            assert page.get_by_role('button', name='Export encrypted backup', exact=True).count() == 0
             assert page.evaluate('JSON.stringify(AtlasWorkspace.sites.list())') == catalog
             page.get_by_role('button', name='Lock & close', exact=True).click()
             assert not page.locator('#teamVaultDialog').inner_text()
             browser.close()
         vault = appdata / 'TeamWorkspace' / 'vault.json'
         saved = json.loads(vault.read_text('utf-8'))
-        assert saved['revision'] == 2
+        assert saved['revision'] == 3
         assert (vault.parent / 'vault.json.bak').is_file()
         for file in appdata.rglob('*'):
             if file.is_file() and file.suffix in ('.json', '.log', '.tmp', '.bak'):
@@ -72,6 +95,7 @@ def main():
         host.expect('GET', 'TeamWorkspace/vault.json', 404)
         host.stop()
         host.start()
+        assert json.loads(host.expect('POST', 'api/team-device', 200, headers=headers)[2]) == identity
         with sync_playwright() as pw:
             browser = pw.chromium.launch(channel='msedge', headless=True)
             page = browser.new_page()
@@ -80,10 +104,16 @@ def main():
             page.locator('#collaborationBtn').click()
             page.get_by_label('Passphrase', exact=True).fill(PASS)
             page.get_by_role('button', name='Unlock workspace', exact=True).click()
+            page.get_by_role('button', name='Private chat', exact=True).click()
             page.locator('#teamVaultDialog article').filter(has_text=SECRET).wait_for()
             browser.close()
         host.stop()
-        print('PASS: native encrypted team persistence, guards, CAS, diagnostics isolation and restart.', flush=True)
+        host.start()
+        device_path.write_bytes(b'corrupt-protected-device')
+        host.expect('POST', 'api/team-device', 400, headers=headers)
+        assert device_path.read_bytes() == b'corrupt-protected-device'
+        host.stop()
+        print('PASS: native encrypted team persistence, authenticated Viewer, DPAPI identity, guards, CAS, diagnostics isolation and restart.', flush=True)
     finally:
         host.cleanup()
 

@@ -93,5 +93,52 @@ wallet secrets or exact coordinates in routing metadata. Do not deploy a relay
 until malicious-server, replay, removed-device and recovery tests pass review.
 Midnight and wallet integration remain outside this phase. Telemetry stays OFF.
 
+## Implemented behavior and validation map
+
+`team-session.js` now owns authentication and all controller authorization. The
+outer envelope stays compatible with the ciphertext-only native store. Its
+encrypted document carries a version-3 security section, credential proofs,
+retired member IDs and audit metadata. Legacy schema-2 documents migrate only
+after successful Owner authentication; a failed migration never writes.
+Private author payloads use the `private` authenticated purpose, credential
+proofs use `credential`, and attachments use `file`, preventing cross-purpose
+substitution. Private site references, file names and all private text versions
+are inside the author envelope. Public contribution is an application visibility
+state, not publication. Changing shared content to private cannot recall copies.
+
+Full restore authenticates shared files and the Owner's private files. Other
+authors' private envelopes are structurally validated but can only be decrypted
+and fully validated when those authors authenticate. Export preserves these
+opaque envelopes; it does not discard content the Owner cannot decrypt.
+Audit entries contain only sequence, enumerated action, enumerated role and local
+timestamp. They are inside the encrypted snapshot, bounded at 4,096 events, and
+fail closed on exhaustion. They contain no user-supplied identifiers or text.
+They are not independently signed, externally anchored or tamper-proof against
+an Owner with the workspace key; backup restore can restore older history.
+
+The device anchor lives in `TeamSecrets/device.bin`, separate from
+`TeamWorkspace/vault.json`. Only a SHA-256 fingerprint is returned through the
+guarded local action. The random secret is protected with DPAPI CurrentUser;
+neither secret nor fingerprint grants workspace access. It is intentionally
+absent from portable backups. Browser previews explicitly have no DPAPI identity.
+
+Additional reviewed limitations: membership and audit policy are enforced by the
+trusted local controller, not by an untrusted-storage signature protocol. A local
+filesystem attacker can replace ciphertext or roll back a whole backup. Revoking
+a member blocks future application authentication and stale writes; it cannot
+erase a prior decrypted view. No automatic passphrase recovery or cross-user OS
+service exists. Recovering a removed member's orphaned private data requires
+restoring a suitable older backup in a separate trusted recovery environment with
+the corresponding passwords. Do not reuse the removed identity ID.
+
+Tests: `team-auth.test.cjs` exercises credential/role denial, private author
+encryption, file visibility, removal/reuse/staleness, passphrase changes, recovery,
+audit allowlists and migration. `team_auth_ui.cjs` exercises real browser member
+switching, Viewer controls, password changes and private/audit isolation. The
+existing `team_ui.cjs` still covers normal JSON/KML export isolation.
+`team_vault_native.py` verifies real native persistence, authenticated Viewer UI,
+DPAPI fingerprint stability, corrupt-anchor refusal and request guards on a fresh
+GitHub Windows runner. The entire prior suite remains required.
+
 References: [Web Crypto](https://www.w3.org/TR/WebCryptoAPI/),
 [Microsoft DPAPI](https://learn.microsoft.com/en-us/dotnet/standard/security/how-to-use-data-protection).

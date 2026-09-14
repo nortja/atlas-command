@@ -1,5 +1,9 @@
 # Local encrypted team workspace threat model
 
+Historical Phase 2 design. The [Phase 3 review and identity model](collaboration-phase-3-security.md)
+supersedes the role, private-content encryption, passphrase-change and recovery
+sections below. The original design is retained for migration/review context.
+
 Design recorded before Phase 2 implementation, September 14, 2026.
 This is a local development feature, not reviewed production collaboration.
 

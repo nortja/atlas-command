@@ -316,6 +316,34 @@ internal static class AtlasHost
         } catch { Error(stream,400,"Private storage unavailable or invalid"); }
     }
 
+    // A local device anchor, not a workspace key or remotely valid credential.
+    static void HandleTeamDevice(NetworkStream stream, string method, Dictionary<string,string> headers)
+    {
+        byte[] secret = null;
+        try {
+            string requested;
+            if (!headers.TryGetValue("X-Atlas-Request",out requested) || requested != "local") { Error(stream,403,"Local action header required"); return; }
+            if (method != "POST") { Error(stream,405,"Explicit device action required"); return; }
+            string directory = Path.Combine(AppData,"TeamSecrets"), path = Path.Combine(directory,"device.bin");
+            lock (DataLock) {
+                if (File.Exists(path)) {
+                    if (new FileInfo(path).Length > 4096) throw new InvalidDataException();
+                    secret = ProtectedData.Unprotect(File.ReadAllBytes(path),null,DataProtectionScope.CurrentUser);
+                    if (secret.Length != 32) throw new InvalidDataException();
+                } else {
+                    secret = new byte[32]; using (var random = RandomNumberGenerator.Create()) random.GetBytes(secret);
+                    byte[] protectedBytes = ProtectedData.Protect(secret,null,DataProtectionScope.CurrentUser);
+                    Directory.CreateDirectory(directory);
+                    using (var file = new FileStream(path,FileMode.CreateNew,FileAccess.Write,FileShare.None)) { file.Write(protectedBytes,0,protectedBytes.Length); file.Flush(true); }
+                }
+                byte[] fingerprint; using (var hash = SHA256.Create()) fingerprint = hash.ComputeHash(secret);
+                string id = BitConverter.ToString(fingerprint).Replace("-","").ToLowerInvariant();
+                SendJson(stream,"{\"id\":\"" + id + "\",\"protection\":\"windows-current-user\"}");
+            }
+        } catch { Error(stream,400,"Protected device identity unavailable"); }
+        finally { if (secret != null) Array.Clear(secret,0,secret.Length); }
+    }
+
     static JavaScriptSerializer Json() { return new JavaScriptSerializer { MaxJsonLength = MaxJson, RecursionLimit = 64 }; }
     static string ReadLine(NetworkStream s, ref int total)
     {
@@ -378,6 +406,7 @@ internal static class AtlasHost
             if (rel.StartsWith("api/camera/",StringComparison.Ordinal)) { if (method != "POST") { Error(stream,405,"Camera viewing requires an explicit local action"); return; } SendCamera(stream,rel.Substring("api/camera/".Length)); return; }
             if (rel == "api/heartbeat" && method == "GET") { SendJson(stream,"{\"ok\":true}"); return; }
             if (rel == "api/team-vault") { HandleTeamVault(stream,method,headers,body); return; }
+            if (rel == "api/team-device") { HandleTeamDevice(stream,method,headers); return; }
             if (rel == "api/state") {
                 if (method == "GET") {
                     lock (DataLock) {
@@ -420,7 +449,7 @@ internal static class AtlasHost
             if (method != "GET" && !head) { Error(stream,405,"Method not allowed"); return; }
             if (rel == "") rel = "index.html";
             // Serve the renderer only, never source/host files, data-folder backups, or directory listings.
-            bool allowed = rel == "src/team-shell.css" || rel == "src/team-shell.js" || rel == "src/team-vault.js" || rel == "src/team-model.js" || rel == "src/team-crypto.js" || rel == "src/collaboration-shell.css" || rel == "src/collaboration-shell.js" || rel == "src/collaboration-model.js" || rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "src/next-ui.css" || rel == "src/workspace-layout.js" || rel == "src/weather-units.js" || rel == "src/live-weather.js" || rel == "src/live-weather.css" || rel == "src/data-refresh.js" || rel == "src/cameras.js" || rel == "src/cameras.css" || rel == "src/ui-directions.js" || rel == "src/ui-directions.css" || rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-diagnostics.js" || rel == "src/field-camera-onvif.js" || rel == "src/field-camera-transport.js" || rel == "src/field-camera-layout.js" || rel == "src/field-camera-recordings.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/field-camera-ux.js" || rel == "src/field-camera-ux.css" || rel == "src/field-camera-auth.js" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/lidar.js" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
+            bool allowed = rel == "src/team-session.js" || rel == "src/team-shell.css" || rel == "src/team-shell.js" || rel == "src/team-vault.js" || rel == "src/team-model.js" || rel == "src/team-crypto.js" || rel == "src/collaboration-shell.css" || rel == "src/collaboration-shell.js" || rel == "src/collaboration-model.js" || rel == "index.html" || rel == "src/app.js" || rel == "src/core.js" || rel == "src/globe.js" || rel == "src/styles.css" || rel == "src/next-ui.css" || rel == "src/workspace-layout.js" || rel == "src/weather-units.js" || rel == "src/live-weather.js" || rel == "src/live-weather.css" || rel == "src/data-refresh.js" || rel == "src/cameras.js" || rel == "src/cameras.css" || rel == "src/ui-directions.js" || rel == "src/ui-directions.css" || rel == "src/ui-refinement.css" || rel == "src/field-cameras.js" || rel == "src/field-camera-diagnostics.js" || rel == "src/field-camera-onvif.js" || rel == "src/field-camera-transport.js" || rel == "src/field-camera-layout.js" || rel == "src/field-camera-recordings.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/field-camera-ux.js" || rel == "src/field-camera-ux.css" || rel == "src/field-camera-auth.js" || rel == "src/field-cameras.js" || rel == "src/field-camera-desk.js" || rel == "src/field-cameras.css" || rel == "src/lidar.js" || rel == "assets/world.js" || rel == "assets/icon.svg" || rel == "data/seed.js";
             string ext = Path.GetExtension(rel).ToLowerInvariant();
             string type = ext == ".html" ? "text/html; charset=utf-8" : ext == ".js" ? "text/javascript; charset=utf-8" : ext == ".css" ? "text/css; charset=utf-8" : ext == ".svg" ? "image/svg+xml" : "";
             if (!allowed || type == "") { Error(stream,404,"Not found"); return; }

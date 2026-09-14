@@ -1,5 +1,8 @@
 # Phase 2: local encrypted research workspace
 
+Historical Phase 2 behavior. See [Phase 3 security and identity changes](collaboration-phase-3-security.md)
+for authenticated sessions, private author keys, audits and passphrase changes.
+
 The Teams button now opens one persistent encrypted workspace on this device.
 The earlier session model and shell remain available to their regression tests.
 This is a bounded local prototype, with no networking, invitations or publication.
