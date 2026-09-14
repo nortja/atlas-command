@@ -36,7 +36,7 @@ function pathVec(g,line){return line.map(([lon,lat])=>g.vec(lat,lon));}
 function drawGeoLine(g,line,stroke,width,shadow){const ctx=g.ctx,pts=pathVec(g,line);ctx.beginPath();let active=false;for(const v of pts){const p=g.project(v);if(p.z>.025){if(active)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);active=true;}else active=false;}if(shadow){ctx.save();ctx.shadowColor=shadow;ctx.shadowBlur=5;ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();ctx.restore();}else{ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}}
 function ellipsePoints(lat,lon,rx,ry){const out=[];for(let i=0;i<=28;i++){const a=i/28*TAU,cl=Math.max(.25,Math.cos(lat*RAD));out.push([lon+Math.cos(a)*rx/cl,lat+Math.sin(a)*ry]);}return out;}
 function ring(lat){const out=[];for(let lon=-180;lon<=180;lon+=5)out.push([lon,lat]);return out;}
-function paint(g,t){const ctx=g.ctx,R=g.radius;if(!R)return;ctx.save();ctx.beginPath();ctx.arc(g.cx,g.cy,R,0,TAU);ctx.clip();
+function paint(g,t){if(g.options.photoEarth)return;const ctx=g.ctx,R=g.radius;if(!R)return;ctx.save();ctx.beginPath();ctx.arc(g.cx,g.cy,R,0,TAU);ctx.clip();
  // Ocean depth cue and subtle latitude-driven polar ice reference.
  const deep=ctx.createRadialGradient(g.cx+R*.18,g.cy+R*.2,R*.25,g.cx,g.cy,R);deep.addColorStop(0,'rgba(2,30,52,.00)');deep.addColorStop(1,'rgba(0,10,25,.18)');ctx.fillStyle=deep;ctx.fillRect(g.cx-R,g.cy-R,R*2,R*2);
  for(const lat of [72,79,-72,-79])drawGeoLine(g,ring(lat),'rgba(230,244,247,'+(Math.abs(lat)>75?'.26':'.13')+')',Math.abs(lat)>75?5.5:2.8,'rgba(220,244,250,.15)');

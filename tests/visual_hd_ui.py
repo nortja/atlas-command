@@ -27,6 +27,18 @@ def main():
    assert page.evaluate('AtlasTest.globe.environmentRenderers.has("satellite-earth")')
    assert page.locator('#satelliteEarth').count()==1
    assert page.locator('#atlasMoonContext').count()==1
+   page.wait_for_selector('#touchModeBtn')
+   image=host.expect('GET','assets/earth-blue-marble-2048.png',200)[2]
+   assert image[:8]==b'\x89PNG\r\n\x1a\n'
+   assert int.from_bytes(image[16:20],'big')==2048
+   page.locator('#overviewBtn').click()
+   assert page.locator('#overviewDialog #atlasInstruments').is_visible()
+   page.locator('#overviewDialog .dialog-close').click()
+   page.locator('#touchModeBtn').click()
+   assert page.locator('#touchModeBtn').get_attribute('aria-pressed')=='true'
+   assert page.locator('#zoomIn').bounding_box()['height']>=48
+   page.locator('#touchModeBtn').click()
+
    assert page.locator('#weatherRibbon').is_visible()
    box=page.locator('#weatherRibbon').bounding_box();assert box and box['height']<72 and box['width']<900
    assert 'Live weather is off' in page.locator('#weatherRibbon').inner_text()
