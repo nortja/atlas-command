@@ -1,0 +1,58 @@
+    static string WorkspaceRevision(string text)
+    {
+        using (var hash = System.Security.Cryptography.SHA256.Create()) {
+            return BitConverter.ToString(hash.ComputeHash(Utf8.GetBytes(text))).Replace("-", "").ToLowerInvariant();
+        }
+    }
+    static string ReadWorkspaceText() { return File.Exists(StatePath) ? File.ReadAllText(StatePath,Utf8) : "null"; }
+    static string RecordBackupPath(string id)
+    {
+        if(id=="previous") return StatePath+".bak";
+        if(!Regex.IsMatch(id??"",@"^backup-[0-9]{4}-[0-9]{2}-[0-9]{2}\.json$"))throw new InvalidDataException("Unknown record backup.");
+        return Path.Combine(DataDir,id);
+    }
+    static string ReadRecordBackup(string id)
+    {
+        string path=RecordBackupPath(id);var info=new FileInfo(path);
+        if(!info.Exists||info.Length>MaxJson||(info.Attributes&FileAttributes.ReparsePoint)!=0)throw new InvalidDataException("Record backup unavailable.");
+        string text=File.ReadAllText(path,Utf8);ValidateState(text);return text;
+    }
+    static void HandleGuardedWorkspace(NetworkStream stream,string method,Dictionary<string,string> headers,byte[] body)
+    {
+        lock(DataLock) {
+            string current=ReadWorkspaceText(),revision=WorkspaceRevision(current);
+            if(method=="GET") { if(current!="null")ValidateState(current);SendJson(stream,"{\"revision\":\""+revision+"\",\"value\":"+current+"}");return; }
+            if(method!="POST"){Error(stream,405,"Unsupported workspace action");return;}
+            RequireType(headers,"application/json");var request=Json().DeserializeObject(Utf8.GetString(body)) as Dictionary<string,object>;
+            if(request==null||!request.ContainsKey("revision")||!request.ContainsKey("value")){Error(stream,400,"Workspace revision required");return;}
+            if(!String.Equals(Convert.ToString(request["revision"],CultureInfo.InvariantCulture),revision,StringComparison.Ordinal)){Error(stream,409,"Workspace changed; review before saving");return;}
+            string text=Json().Serialize(request["value"]);ValidateState(text);SaveAtomic(text);
+            SendJson(stream,"{\"revision\":\""+WorkspaceRevision(text)+"\"}");
+        }
+    }
+    static void HandleRecordBackups(NetworkStream stream,string method,Dictionary<string,string> headers,byte[] body,string requestPath)
+    {
+        lock(DataLock) {
+            if(method=="GET") {
+                string query=new Uri(Origin+requestPath).Query;
+                if(query.StartsWith("?review=",StringComparison.Ordinal)) {
+                    string id=Uri.UnescapeDataString(query.Substring(8)),text=ReadRecordBackup(id);
+                    SendJson(stream,Json().Serialize(new {id=id,revision=WorkspaceRevision(text),value=Json().DeserializeObject(text)}));return;
+                }
+                if(query.Length!=0){Error(stream,400,"Unknown backup query");return;}
+                var entries=new List<object>();var ids=new List<string>();if(File.Exists(StatePath+".bak"))ids.Add("previous");
+                foreach(string file in Directory.GetFiles(DataDir,"backup-*.json"))if(Regex.IsMatch(Path.GetFileName(file),@"^backup-[0-9]{4}-[0-9]{2}-[0-9]{2}\.json$"))ids.Add(Path.GetFileName(file));
+                ids.Sort(StringComparer.Ordinal);ids.Reverse();if(ids.Count>366)ids=ids.GetRange(0,366);
+                foreach(string id in ids){var info=new FileInfo(RecordBackupPath(id));if((info.Attributes&FileAttributes.ReparsePoint)==0)entries.Add(new {id=id,bytes=info.Length,savedUtc=info.LastWriteTimeUtc.ToString("o",CultureInfo.InvariantCulture)});}
+                SendJson(stream,Json().Serialize(entries));return;
+            }
+            if(method!="POST"){Error(stream,405,"Unsupported backup action");return;}
+            RequireType(headers,"application/json");var request=Json().DeserializeObject(Utf8.GetString(body)) as Dictionary<string,object>;
+            if(request==null||!request.ContainsKey("revision")||!request.ContainsKey("backupRevision")||!request.ContainsKey("id")){Error(stream,400,"Reviewed backup required");return;}
+            string current=ReadWorkspaceText();
+            if(!String.Equals(Convert.ToString(request["revision"],CultureInfo.InvariantCulture),WorkspaceRevision(current),StringComparison.Ordinal)){Error(stream,409,"Workspace changed; review again");return;}
+            string restoredText=ReadRecordBackup(Convert.ToString(request["id"],CultureInfo.InvariantCulture));
+            if(!String.Equals(Convert.ToString(request["backupRevision"],CultureInfo.InvariantCulture),WorkspaceRevision(restoredText),StringComparison.Ordinal)){Error(stream,409,"Backup changed; review again");return;}
+            SaveAtomic(restoredText);SendJson(stream,"{\"revision\":\""+WorkspaceRevision(restoredText)+"\"}");
+        }
+    }

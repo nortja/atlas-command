@@ -81,11 +81,11 @@ def main():
    assert page.evaluate('AtlasWorkspace.sites.list().find(s=>s.id==="lidar-1").research.lidar')==saved
    passed('Saving magnetic comparison preserves another module\'s LiDAR metadata')
    before=page.evaluate('AtlasWorkspace.layouts.read("ultrawide")')
-   page.route('**/api/state',lambda route:route.fulfill(status=500,body='Synthetic save failure'))
+   page.route('**/api/state-v2',lambda route:route.fulfill(status=500,body='Synthetic save failure'))
    page.locator('#workspacePresets').click();page.locator('[data-preset="expedition"]').click()
    expect(page.locator("#layoutStatus")).to_contain_text("Not saved:")
    assert page.evaluate('AtlasWorkspace.layouts.read("ultrawide")')==before
-   page.unroute('**/api/state');page.locator('#workspaceChooser [data-close]').click()
+   page.unroute('**/api/state-v2');page.locator('#workspaceChooser [data-close]').click()
    passed('Failed local save reports the error and rolls back layout state')
    for width,height in [(1366,768),(2560,1080),(820,1180)]:
     page.set_viewport_size({'width':width,'height':height});page.wait_for_timeout(220)

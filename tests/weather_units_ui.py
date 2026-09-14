@@ -49,11 +49,11 @@ def main():
             def fail_write(route):
                 if route.request.method=='POST':route.fulfill(status=503,body='Synthetic persistence failure')
                 else:route.continue_()
-            page.route('**/api/state',fail_write)
+            page.route('**/api/state-v2',fail_write)
             us.click();expect(page.locator('[data-weather-unit-status]')).to_contain_text('Could not confirm save.')
             expect(metric).to_have_attribute('aria-pressed','true')
             assert host.read_state()['settings']['weatherUnits']=='metric'
-            page.unroute('**/api/state',fail_write)
+            page.unroute('**/api/state-v2',fail_write)
             passed('Failed local write is reported and previous in-memory units are restored')
             us.click();expect(page.locator('[data-weather-unit-status]')).to_have_text('Saved locally: °F + mph')
             assert host.read_state()['settings']['weatherUnits']=='us'

@@ -7,7 +7,7 @@ name: Build Atlas owner preview
 on:
   push:
     branches: ['develop/ui-directions']
-    paths: ['.github/workflows/owner-preview.yml','build/Build-OwnerPreview.ps1','packaging/owner-preview/**','tests/owner-preview.test.cjs','tests/live-weather.test.cjs','tests/windows_native_smoke.py','tests/next_ui_test.py','build/integrate_field_camera_onvif_service.py','build/integrate_windows_webcam.py','app/src/windows-webcam.js','app/src/windows-webcam.css','tests/windows-webcam.test.cjs','tests/windows_webcam_ui.py','build/integrate_experience_push.py','app/src/weather-desk.js','app/src/weather-desk.css','app/src/ocean-currents.js','app/src/ocean-currents.css','app/src/site-detail-enhance.js','app/src/site-detail-enhance.css','tests/experience-push.test.cjs','tests/experience_ui.py','build/integrate_visual_hd_push.py','build/integrate_catalog_r6_remote_updates.py','build/integrate_catalog_r7_discovery.py','build/integrate_catalog_r8.py','app/src/weather-ribbon.js','app/src/weather-ribbon.css','app/src/earth-physical.js','app/src/satellite-earth.js','app/src/satellite-earth.css','app/src/remote-updates.js','app/data/site-expansion.js','app/data/site-expansion-r5.js','app/data/site-expansion-r6.js','app/data/site-expansion-r7.js','app/data/site-expansion-r8.js','tests/remote-updates.test.cjs','tests/visual-hd-push.test.cjs','tests/satellite-earth.test.cjs','tests/visual_hd_ui.py','build/integrate_power_lifecycle.py','app/src/power-controls.css','tests/power-lifecycle.test.cjs','tests/power_lifecycle_ui.py','app/src/team-*','app/src/collaboration-*','build/integrate_team_vault.py','build/team-vault-host.cs.txt','build/team-device-host.cs.txt','build/integrate_collaboration.py','app/src/exploration-ui.*','app/src/globe.js','app/assets/earth-blue-marble-2048.png','build/integrate_exploration_ui.py','build/local-request-rejection.cs.txt','tests/exploration*','app/src/catalog-intake*','build/integrate_catalog_intake.py','tests/catalog*','tests/team*','tests/collaboration*']
+    paths: ['.github/workflows/owner-preview.yml','build/Build-OwnerPreview.ps1','packaging/owner-preview/**','tests/owner-preview.test.cjs','tests/live-weather.test.cjs','tests/windows_native_smoke.py','tests/next_ui_test.py','build/integrate_field_camera_onvif_service.py','build/integrate_windows_webcam.py','app/src/windows-webcam.js','app/src/windows-webcam.css','tests/windows-webcam.test.cjs','tests/windows_webcam_ui.py','build/integrate_experience_push.py','app/src/weather-desk.js','app/src/weather-desk.css','app/src/ocean-currents.js','app/src/ocean-currents.css','app/src/site-detail-enhance.js','app/src/site-detail-enhance.css','tests/experience-push.test.cjs','tests/experience_ui.py','build/integrate_visual_hd_push.py','build/integrate_catalog_r6_remote_updates.py','build/integrate_catalog_r7_discovery.py','build/integrate_catalog_r8.py','app/src/weather-ribbon.js','app/src/weather-ribbon.css','app/src/earth-physical.js','app/src/satellite-earth.js','app/src/satellite-earth.css','app/src/remote-updates.js','app/data/site-expansion.js','app/data/site-expansion-r5.js','app/data/site-expansion-r6.js','app/data/site-expansion-r7.js','app/data/site-expansion-r8.js','tests/remote-updates.test.cjs','tests/visual-hd-push.test.cjs','tests/satellite-earth.test.cjs','tests/visual_hd_ui.py','build/integrate_power_lifecycle.py','app/src/power-controls.css','tests/power-lifecycle.test.cjs','tests/power_lifecycle_ui.py','app/src/team-*','app/src/collaboration-*','build/integrate_team_vault.py','build/team-vault-host.cs.txt','build/team-device-host.cs.txt','build/integrate_collaboration.py','app/src/exploration-ui.*','app/src/globe.js','app/assets/earth-blue-marble-2048.png','build/integrate_exploration_ui.py','build/local-request-rejection.cs.txt','tests/exploration*','app/src/catalog-intake*','build/integrate_catalog_intake.py','tests/catalog*','app/src/workspace-storage.js','app/src/workspace-recovery*','build/integrate_workspace_recovery.py','build/workspace-*.txt','tests/workspace-recovery*','tests/workspace_recovery*','tests/team*','tests/collaboration*']
 permissions:
   contents: read
 concurrency:
@@ -49,6 +49,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Exploration UI integration failed.' }
           python build/integrate_catalog_intake.py
           if ($LASTEXITCODE -ne 0) { throw 'Catalog intake integration failed.' }
+          python build/integrate_workspace_recovery.py
+          if ($LASTEXITCODE -ne 0) { throw 'Workspace recovery integration failed.' }
           python build/integrate_collaboration.py
           if ($LASTEXITCODE -ne 0) { throw 'Collaboration integration failed.' }
       - name: Run source and logic checks
@@ -95,6 +97,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'HD planet UI runtime test failed.' }
           python tests/power_lifecycle_ui.py
           if ($LASTEXITCODE -ne 0) { throw 'Power lifecycle runtime test failed.' }
+          python tests/workspace_recovery_native.py
+          if ($LASTEXITCODE -ne 0) { throw 'Workspace recovery runtime test failed.' }
           python tests/team_vault_native.py
           if ($LASTEXITCODE -ne 0) { throw 'Encrypted team workspace runtime test failed.' }
       - name: Verify owner preview artifact

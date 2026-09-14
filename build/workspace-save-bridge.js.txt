@@ -1,0 +1,4 @@
+function reportStorage(){const s=workspaceStorage.status();$('#storageBadge').textContent=s.conflict?'NEWER SAVED COPY · RECOVERY':s.error?'SAVE NEEDS ATTENTION':s.pending?'SAVING…':s.dirty?'UNSAVED CHANGES':native?'SAVED ON THIS PC':'LOCAL PREVIEW';window.dispatchEvent(new Event('atlas:storage'));}
+function queueWorkspaceSave(){const task=workspaceStorage.save(state);writeQueue=task.catch(()=>{});return task;}
+function save(){workspaceStorage.markDirty();state.savedAt=new Date().toISOString();clearTimeout(saveTimer);saveTimer=setTimeout(()=>{queueWorkspaceSave().catch(()=>{toast('Workspace save needs attention. Open Overview → Recovery to preserve your unsaved research.');});},180);}
+async function flush(){clearTimeout(saveTimer);state.savedAt=new Date().toISOString();await queueWorkspaceSave();}
