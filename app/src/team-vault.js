@@ -2,7 +2,7 @@
 'use strict';
 const fail=()=>{throw new Error('Workspace is locked, changed elsewhere, or could not be saved.');};
 const session=typeof module==='object'?require('./team-session.js'):globalThis.AtlasTeamSession;
-const create=store=>session(C,M,store);
+const create=(store,options)=>session(C,M,store,options);
 function storage(){
   if(/^\/[a-f0-9]{32}\//.test(location.pathname)){
     const url=new URL('api/team-vault',location.href);

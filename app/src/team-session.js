@@ -1,11 +1,12 @@
 /* Authenticated local workstation sessions. No remote authentication protocol. */
-(function(root,factory){if(typeof module==='object')module.exports=factory;else root.AtlasTeamSession=factory;})(globalThis,function(C,M,store){
+(function(root,factory){if(typeof module==='object')module.exports=factory;else root.AtlasTeamSession=factory;})(globalThis,function(C,M,store,options){
 'use strict';
+const now=options?.now||(()=>performance.now());
 const fail=()=>{throw new Error('Authentication, permission, version or encrypted storage check failed.');};
 const copy=x=>JSON.parse(JSON.stringify(x));
 const actions=['workspace_created','legacy_migrated','record_created','record_revised','visibility_changed','proposal_created','proposal_approved','proposal_rejected','file_added','file_revised','file_export','member_enrolled','member_role_changed','member_removed','backup_export','backup_import','passphrase_changed'];
-let doc=null,rootKey=null,actor=null,actorKey=null,cached=null,revision=0,epoch=0,busy=false;
-function lock(){epoch++;doc=rootKey=actor=actorKey=cached=null;revision=0;}
+let doc=null,rootKey=null,actor=null,actorKey=null,cached=null,pendingRestore=null,revision=0,epoch=0,busy=false;
+function lock(){epoch++;doc=rootKey=actor=actorKey=cached=pendingRestore=null;revision=0;}
 function current(e){if(e!==epoch)fail();}
 function role(){const m=doc?.members.find(m=>m.id===actor);if(!m||!actorKey)fail();return m.role;}
 function owner(){if(role()!=='Owner')fail();}
@@ -38,6 +39,7 @@ async function renderView(d,id,key){const v=M.view(d,id);delete v.security;for(l
 async function persist(d,key,expected,e,id=actor,privateKey=actorKey){
   validate(d);const nextView=await renderView(d,id,privateKey),bytes=C.encode(d);let envelope;try{envelope=await C.seal(key,d.id,expected+1,'workspace',bytes);}finally{bytes.fill(0);}current(e);await store.write(envelope,expected);current(e);
   doc=d;rootKey=key;revision=envelope.revision;actor=id;actorKey=privateKey;cached=nextView;
+  pendingRestore=null;
 }
 async function decode(envelope,key){const bytes=await C.open(key,envelope,envelope.id,'workspace');try{const d=M.validate(C.decode(bytes));if(d.id!==envelope.id)fail();return d;}finally{bytes.fill(0);}}
 async function migrate(d,key){
@@ -53,11 +55,18 @@ return Object.freeze({
   identities:()=>{if(!doc)fail();return doc.members.filter(m=>doc.security.credentials.some(c=>c.id===m.id)).map(m=>({id:m.id,name:m.name}));},
   create:(pass,name)=>exclusive(async e=>{if(await store.read())fail();const key=await C.context(pass),d=M.create(C.id(),C.id(),name);d.security={version:3,credentials:[await credential(key,d,d.ownerId)],retired:[],audit:[]};audit(d,'workspace_created','Owner');await persist(d,key,0,e,d.ownerId,key);}),
   unlock:pass=>exclusive(async e=>{lock();const active=epoch,envelope=C.validate(await store.read()),key=await C.context(pass,envelope.salt),d=await decode(envelope,key),legacy=!d.security;await migrate(d,key);const own=await prove(d,d.ownerId,pass);await files(d,key,d.ownerId,own);current(active);if(legacy)await persist(d,key,envelope.revision,active,d.ownerId,own);else{const v=await renderView(d,d.ownerId,own);current(active);doc=d;rootKey=key;actor=d.ownerId;actorKey=own;cached=v;revision=envelope.revision;}}),
-  authenticate:(id,pass)=>exclusive(async e=>{if(!doc)fail();actor=actorKey=cached=null;await fresh();const key=await prove(doc,id,pass);await files(doc,rootKey,id,key);const v=await renderView(doc,id,key);current(e);actor=id;actorKey=key;cached=v;}),
-  signOut:()=>{epoch++;actor=actorKey=cached=null;},
+  authenticate:(id,pass)=>exclusive(async e=>{if(!doc)fail();actor=actorKey=cached=pendingRestore=null;await fresh();const key=await prove(doc,id,pass);await files(doc,rootKey,id,key);const v=await renderView(doc,id,key);current(e);actor=id;actorKey=key;cached=v;}),
+  signOut:()=>{epoch++;actor=actorKey=cached=pendingRestore=null;},
   view:()=>{role();return copy(cached);},
   disclosure:()=>{role();return M.disclosure(cached,actor);},
   audit:()=>{if(!['Owner','Admin'].includes(role()))fail();return copy(doc.security.audit);},
+  health:()=>{const own=role()==='Owner';return {revision,visibleRecords:cached.records.length,maxVersions:20,maxFileBytes:2*1024*1024,...(own?{records:doc.records.length,maxRecords:200,snapshotBytes:C.encode(doc).length,maxSnapshotBytes:8*1024*1024,auditEvents:doc.security.audit.length,maxAuditEvents:4096}:{})};},
+  cancelRestore:token=>{if(!token||pendingRestore?.token===token)pendingRestore=null;},
+  inspectBackup:(text,pass)=>exclusive(async e=>{pendingRestore=null;const previous=await store.read();if(previous){owner();await fresh();}const envelope=C.parse(text),key=await C.context(pass,envelope.salt),d=await decode(envelope,key);await migrate(d,key);const own=await prove(d,d.ownerId,pass);await files(d,key,d.ownerId,own);current(e);
+    const token=C.id();pendingRestore={token,key,d,own,expected:previous?.revision||0,currentId:previous?.id||null,epoch:e,expires:now()+120000};
+    return {token,name:d.name,workspaceId:d.id,backupRevision:envelope.revision,currentRevision:previous?.revision||0,differentWorkspace:!!previous&&previous.id!==d.id,older:!!previous&&previous.id===d.id&&envelope.revision<previous.revision,records:d.records.length,members:d.members.length,versions:d.records.reduce((n,r)=>n+r.versions.length,0),privateEnvelopes:d.records.filter(r=>r.authorId!==d.ownerId&&r.visibility==='private').length};
+  }),
+  restoreReviewed:(token,replace)=>exclusive(async e=>{const p=pendingRestore;pendingRestore=null;if(replace!==true||!p||token!==p.token||p.epoch!==e||now()>=p.expires)fail();const previous=await store.read();if((previous?.revision||0)!==p.expected||(previous?.id||null)!==p.currentId)fail();if(previous){owner();await fresh();}audit(p.d,'backup_import','Owner');await persist(p.d,p.key,p.expected,e,p.d.ownerId,p.own);}),
   enroll:(input,pass)=>exclusive(async e=>{await fresh();const acting=role(),id=input.id||C.id();if(doc.security.retired.includes(id)||doc.security.credentials.some(c=>c.id===id))fail();const d=M.apply(doc,actor,{...input,type:'member',id});const key=await C.context(pass);d.security.credentials.push(await credential(key,d,id));audit(d,'member_enrolled',acting);await persist(d,rootKey,revision,e);return id;}),
   mutate:op=>exclusive(async e=>{await fresh();const acting=role();if(op.kind==='file'||doc.records.find(r=>r.id===op.id)?.kind==='file')fail();if(op.type==='member'&&!doc.members.some(m=>m.id===op.id))fail();let d=M.apply(await editable(),actor,op);
     if(op.type==='member'&&op.remove){d.security.credentials=d.security.credentials.filter(c=>c.id!==op.id);d.security.retired.push(op.id);}
