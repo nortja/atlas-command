@@ -109,6 +109,8 @@ const server=http.createServer((req,res)=>{
       state.sites.find(r=>r.id==='catalog-moenjodaro').notes='preserve-curated-note';
       state.sites.push({...state.sites[0],id:'private-recovery-record',name:'Preserved private site'});
       state.settings.catalogRevision=8;delete state.settings.catalogRevision8Complete;
+      state.settings.reducedMotion=false;
+      state.settings.globeView={lat:34.25,lon:-118.45,zoom:1.73,spin:false,selectedId:state.sites[0].id,mode:'observatory'};
       localStorage.setItem('atlas-command-state',JSON.stringify(state));
     });
     // Avoid beforeunload saving the prior in-memory fixture over the recovery data.
@@ -121,6 +123,9 @@ const server=http.createServer((req,res)=>{
     assert.equal(await restored.locator('.site-item').count(),count+1);
     assert.equal(await restored.evaluate(()=>AtlasWorkspace.sites.list().find(r=>r.id==='catalog-moenjodaro').notes),'preserve-curated-note');
     assert.equal(await restored.evaluate(()=>AtlasTest.state.settings.catalogRevision8Complete),true);
+    await restored.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    assert.equal(await restored.evaluate(()=>AtlasTest.globe.spin),false);
+    assert(Math.abs(await restored.evaluate(()=>AtlasTest.globe.lon)+118.45)<.001);
     await recovery.close();
     console.log('PASS: collaboration drafts, escaping, privacy, proposals, navigation, responsive layout, lock/reload and existing catalog.');
   }finally{await browser.close();}
