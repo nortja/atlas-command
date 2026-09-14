@@ -100,6 +100,28 @@ const server=http.createServer((req,res)=>{
     assert.equal(await page.locator('.site-item').count(),count);
     assert(external.every(url=>url==='https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png'),JSON.stringify(external));
     assert.deepEqual(errors,[]);
+    // An earlier failed R8 script still stamped catalogRevision=8. Recover its
+    // missing records while retaining user edits, notes and private additions.
+    await page.evaluate(()=>{
+      AtlasCollaboration.lock();
+      const state=JSON.parse(JSON.stringify(AtlasTest.state)),ids=new Set(ATLAS_SITE_EXPANSION_R8.map(r=>r.id));
+      state.sites=state.sites.filter(r=>!ids.has(r.id)||r.id==='catalog-moenjodaro');
+      state.sites.find(r=>r.id==='catalog-moenjodaro').notes='preserve-curated-note';
+      state.sites.push({...state.sites[0],id:'private-recovery-record',name:'Preserved private site'});
+      state.settings.catalogRevision=8;delete state.settings.catalogRevision8Complete;
+      localStorage.setItem('atlas-command-state',JSON.stringify(state));
+    });
+    // Avoid beforeunload saving the prior in-memory fixture over the recovery data.
+    const recoveryStorage=await page.evaluate(()=>localStorage.getItem('atlas-command-state'));
+    await context.close();
+    const recovery=await browser.newContext({viewport:{width:1440,height:1000}});
+    await recovery.addInitScript(({base,saved})=>{if(location.origin===base)localStorage.setItem('atlas-command-state',saved);},{base,saved:recoveryStorage});
+    const restored=await recovery.newPage();await restored.route('**/*',r=>r.request().url().startsWith(base+'/')?r.continue():r.abort());
+    await restored.goto(base);await restored.waitForFunction(()=>!!window.AtlasWorkspace);
+    assert.equal(await restored.locator('.site-item').count(),count+1);
+    assert.equal(await restored.evaluate(()=>AtlasWorkspace.sites.list().find(r=>r.id==='catalog-moenjodaro').notes),'preserve-curated-note');
+    assert.equal(await restored.evaluate(()=>AtlasTest.state.settings.catalogRevision8Complete),true);
+    await recovery.close();
     console.log('PASS: collaboration drafts, escaping, privacy, proposals, navigation, responsive layout, lock/reload and existing catalog.');
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>server.close());

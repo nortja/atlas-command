@@ -30,3 +30,10 @@ Both local collaboration commits were reviewed and retained: model defaults and
 role checks, disabled providers, no persistence/network calls, safe DOM rendering,
 separate proposal data, exact native asset allowlists and integration ordering.
 No production crypto or transport was introduced by those commits.
+
+Recovery also handles workspaces already stamped `catalogRevision=8` by the
+broken build. A separate completion marker is set only when all 25 R8 IDs are
+present. Missing IDs are added without replacing existing records. An isolated
+browser upgrade test verifies both a curated-record user note and a private
+addition survive this repair. Local checks: 393 Node tests, browser regression,
+unsigned owner-preview compilation and archive SHA-256 verification passed.
