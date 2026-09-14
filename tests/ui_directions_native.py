@@ -64,9 +64,9 @@ def main():
    passed('Mission counter responds to actual queue add and refuses duplicate additions')
    page.locator('#search').fill('Göbekli');expect(page.locator('[data-stat=visible]')).to_have_text('1');expect(page.locator('[data-stat=total]')).to_have_text('26');page.locator('#search').fill('')
    passed('Filter count updates immediately while library totals remain unchanged')
-   page.locator('#appearanceBtn').click();page.route('**/api/state',lambda r:r.fulfill(status=507,content_type='text/plain',body='Deliberate UI test: disk full'))
+   page.locator('#appearanceBtn').click();page.route('**/api/state-v2',lambda r:r.fulfill(status=507,content_type='text/plain',body='Deliberate UI test: disk full'))
    page.locator('[data-appearance=orbital]').click();expect(page.locator('#appearanceSaveStatus')).to_contain_text('Not saved:');expect(page.locator('body')).to_have_attribute('data-atlas-theme','signal')
-   page.unroute('**/api/state');page.locator('[data-appearance=orbital]').click();expect(page.locator('#appearanceSaveStatus')).to_have_text('Saved locally: Orbital');page.locator('#appearanceClose').click()
+   page.unroute('**/api/state-v2');page.locator('[data-appearance=orbital]').click();expect(page.locator('#appearanceSaveStatus')).to_have_text('Saved locally: Orbital');page.locator('#appearanceClose').click()
    passed('A deliberately rejected local save reports the error, keeps prior appearance, and permits retry')
    assert not requests
    page.locator('#liveEarthBtn').click();page.locator('#earthEnabled').check();page.locator('#earthGlobal').check();page.locator('#earthIdle').uncheck();page.locator('#earthApply').click()

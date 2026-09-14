@@ -12,7 +12,7 @@ function create(adapter,notify=()=>{}){
   status,latest:()=>adapter.read(),backups:()=>adapter.backups?adapter.backups():Promise.resolve([]),
   inspect:id=>adapter.inspect(id),restore:review=>queue(async r=>{const result=await adapter.restore(review,r);stopped=true;return result;}),
   abandon(){stopped=true;},
-  closing(value){if(!loaded||pending||conflict||stopped)return false;if(adapter.closing)return adapter.closing(JSON.stringify(value),revision);return false;},
+  closing(value){if(!loaded||pending||conflict||error||stopped)return false;if(adapter.closing)return adapter.closing(JSON.stringify(value),revision);return false;},
  });
 }
 function browser(storage,locks){const key='atlas-command-state';

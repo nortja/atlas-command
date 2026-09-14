@@ -5,6 +5,7 @@ import json
 import os
 from playwright.sync_api import sync_playwright
 from windows_native_smoke import NativeSmoke
+from urllib.parse import urlsplit
 
 def main():
     if os.name!='nt' or os.environ.get('GITHUB_ACTIONS')!='true' or os.environ.get('RUNNER_ENVIRONMENT')!='github-hosted':
@@ -36,6 +37,14 @@ def main():
                 post('api/state-v2',{'value':first},400)
                 assert get('api/state-v2')['value']['sites'][0]['notes']=='first-guarded-save'
                 host.passed('Native stale and missing revisions cannot overwrite a newer workspace')
+                compared_bytes=(appdata/'Data'/'workspace.json').read_bytes()
+                page.locator('#overviewBtn').click();page.locator('#recoveryBtn').click();page.locator('#compareWorkspace').click()
+                page.locator('[data-comparison-summary]').wait_for()
+                assert 'Notes' in page.locator('[data-comparison-rows]').inner_text()
+                assert 'first-guarded-save' not in page.locator('#workspaceComparison').inner_text()
+                page.locator('#closeRecovery').click()
+                assert (appdata/'Data'/'workspace.json').read_bytes()==compared_bytes
+                host.passed('Native saved-copy comparison shows changed categories without note values or writes')
                 old_backup=get('api/state-backups?review=previous');current=get('api/state-v2');second=copy.deepcopy(first);second['sites'][0]['notes']='second-guarded-save'
                 post('api/state-v2',{'revision':current['revision'],'value':second});current=get('api/state-v2')
                 post('api/state-backups',{'revision':current['revision'],'id':'previous','backupRevision':old_backup['revision']},409)
@@ -98,6 +107,20 @@ def main():
                 post('api/state-backups',{'revision':current['revision'],'id':reviewed['id'],'backupRevision':reviewed['revision']},400)
                 assert (appdata/'Data'/'workspace.json').read_bytes()==before_bytes
                 host.passed('Original-preservation limit refuses restoration without pruning copies or changing current data')
+                # Legacy writes cannot bypass revisions; same-context close saves can.
+                current=get('api/state-v2');before_bytes=(appdata/'Data'/'workspace.json').read_bytes()
+                host.expect('GET','api/state',410)
+                post('api/state',current['value'],410)
+                assert (appdata/'Data'/'workspace.json').read_bytes()==before_bytes
+                beacon=copy.deepcopy(current['value']);beacon['sites'][0]['notes']='native-beacon-fixture'
+                payload=json.dumps({'revision':current['revision'],'value':beacon}).encode()
+                beacon_headers={'Content-Type':'application/json','Origin':'http://'+urlsplit(host.url).netloc}
+                host.expect('POST','api/state-v2',200,body=payload,headers=beacon_headers)
+                assert get('api/state-v2')['value']['sites'][0]['notes']=='native-beacon-fixture'
+                host.expect('POST','api/state-v2',409,body=payload,headers=beacon_headers)
+                host.expect('POST','api/state-v2',403,body=payload,headers={'Content-Type':'application/json'})
+                assert get('api/state-v2')['value']['sites'][0]['notes']=='native-beacon-fixture'
+                host.passed('Legacy endpoint refuses access; same-context close saves enforce current revision and cross-context rejection')
             finally:browser.close()
         host.stop()
     finally:host.cleanup()

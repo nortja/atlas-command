@@ -111,12 +111,13 @@ class NativeSmoke:
         return result
 
     def save(self, state: dict, expected: int = 200):
-        return self.expect('POST', 'api/state', expected,
-            body=json.dumps(state, ensure_ascii=False).encode('utf-8'),
+        revision = json.loads(self.expect('GET', 'api/state-v2', 200)[2])['revision']
+        return self.expect('POST', 'api/state-v2', expected,
+            body=json.dumps({'revision': revision, 'value': state}, ensure_ascii=False).encode('utf-8'),
             headers={'Content-Type': 'application/json', 'X-Atlas-Request': 'local'})
 
     def read_state(self):
-        return json.loads(self.expect('GET', 'api/state', 200)[2])
+        return json.loads(self.expect('GET', 'api/state-v2', 200)[2])['value']
 
     def render(self) -> None:
         from playwright.sync_api import sync_playwright
@@ -239,7 +240,7 @@ class NativeSmoke:
         bad = copy.deepcopy(updated)
         bad['sites'][0]['lat'] = 91
         self.save(bad, expected=400)
-        self.expect('POST', 'api/state', 400, body=b'{not json',
+        self.expect('POST', 'api/state-v2', 400, body=b'{not json',
                     headers={'Content-Type': 'application/json', 'X-Atlas-Request': 'local'})
         assert self.read_state() == updated
         self.passed('Invalid schema, duplicate identifiers, coordinates and malformed JSON preserve saved data')
