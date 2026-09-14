@@ -52,6 +52,8 @@
 - Save reviewable commits and progress checkpoints during extended sessions. If
   one task is blocked, continue independent agreed work and identify the specific
   missing information or access needed for the blocked task.
+- Reaffirmed for each extended session: select and finish an integrated milestone;
+  do not treat internal build/test checkpoints as requests for device testing.
 
 ## Source, generated output, and validation
 
