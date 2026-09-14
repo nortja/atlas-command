@@ -14,7 +14,10 @@ if 'compare:async()=>AtlasWorkspaceComparison.compare' not in s:
 p.write_text(s,encoding='utf-8',newline='\n')
 p=ROOT/'native/AtlasHost.cs';s=p.read_text('utf-8')
 if 'Legacy workspace endpoint retired' not in s:
- start=s.index('            if (rel == "api/state") {');end=s.index('            if (rel.StartsWith("api/field-camera-credentials/',start)
+ start=s.index('            if (rel == "api/state") {')
+ # Stop at this block's exact indentation, not a later route: other recipes
+ # insert camera/ONVIF routes between the legacy block and credential handler.
+ end=s.index('\n            }\n',start)+len('\n            }\n')
  s=s[:start]+'            if (rel == "api/state") { Error(stream,410,"Legacy workspace endpoint retired; reopen updated Atlas"); return; }\n'+s[end:]
  # Only revision-checked saves may use the existing same-context close-beacon path.
  old='(rel == "api/state" || rel == "api/lifecycle")';assert s.count(old)==1;s=s.replace(old,'(rel == "api/state-v2" || rel == "api/lifecycle")')
