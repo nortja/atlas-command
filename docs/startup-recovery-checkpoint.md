@@ -1,8 +1,8 @@
 # Startup recovery and backup inspection milestone
 
 Started from e82e344, with native baseline c2a880b / run 34891320757 green.
-Implementation is integrated; hosted Windows validation is next. Extended-session
-preferences remain in AGENTS.md.
+Implementation is integrated and validated on develop/ui-directions. Extended-session
+preferences remain in AGENTS.md. Tested executable source: f3a159203876746e2e23fa36110faedb6d121325.
 
 ## Scope and threat model before implementation
 
@@ -47,11 +47,47 @@ locally and validate the native app only on disposable hosted Windows.
 - Local owner-preview compilation passed without installation or native launch.
 - All eight browser regression suites passed, including startup recovery, workspace
   recovery, catalog intake, Earth exploration and four encrypted collaboration flows.
-  The startup mobile screenshot was visually checked. Hosted native verification is
-  required before delivery.
+  The startup mobile screenshot was visually checked. The final filter-disable change
+  also passed the workspace recovery browser regression.
+- Hosted Windows run 34895811375 passed all 442 logic tests, including the installer
+  regression, packaging, and all 12 native runtime scripts. Real malformed JSON,
+  unsupported schema and invalid UTF-8 recovery preserved exact original bytes;
+  the 50-copy limit refused restoration without pruning or changing current data.
+- Existing encrypted Teams/DPAPI/role checks, private log isolation, catalog intake,
+  camera boundaries, Earth/layouts and secure shutdown/restart passed.
 
-Next: commit/push only develop/ui-directions, and run the
-owner-preview workflow. Fix any failures and record the green artifact here.
+Green run: https://github.com/nortja/atlas-command/actions/runs/34895811375
+Download: https://github.com/nortja/atlas-command/actions/runs/34895811375/artifacts/10369157155
+Artifact expires September 17, 2026 at 21:02 UTC. The two earlier runs exposed an
+existing asynchronous storage-badge test race and then an incorrect visibility
+assumption for its collapsed panel. Tests now await the save and inspect attached
+status. No application validation or CSP boundary was weakened.
+
+Not verified on the owner's device: physical touch feel, Windows 10/11 installation,
+signed upgrades, MSIX isolation or endpoint-security acceptance. Native tests used
+disposable hosted Windows profiles; no local native app was installed or launched.
+
+## Owner review and recovery behavior
+
+Close the older Atlas instance, extract both the Actions artifact ZIP and enclosed
+owner-preview ZIP into a fresh folder, then launch AtlasCommand.exe. Open Overview
+then Recovery. Try the date search/type filter, review a backup, and choose Keep
+current workspace. Check touch scrolling and readability on the actual device.
+Normal edit/save/reopen can be checked with a disposable note. There is no need to
+damage or restore real research to repeat the isolated native recovery tests.
+
+If startup detects unreadable data, keep the original private workspace before manual
+repair. The Windows recovery screen can open the data folder and inspect compatible
+record backups. Restoration requires an explicit action, checks both revisions, and
+preserves the exact existing file in a separate recovery-original file first.
+An unsupported newer schema should normally be opened with a compatible Atlas version.
+Browser previews can explicitly download the original ordinary workspace string;
+they do not expose Windows backup files or reset browser storage automatically.
+
+Next substantial recovery milestone: a bounded, media-inclusive archive with a
+manifest, validated paths and quotas, read-only inspection, and transactional restore
+tests. Retire legacy unguarded local writers before any future network sync. Keep
+Teams cryptography and secret recovery on their existing separate documented path.
 
 ## Remaining limitations
 
