@@ -2,9 +2,9 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.AtlasWorkspaceStorage=api;})(typeof window==='object'?window:globalThis,function(){'use strict';
 function fault(code){const e=Error(code==='conflict'?'A newer workspace was saved in another window. Open Recovery before saving again.':'Local storage could not complete this action. Your unsaved work is still in this window.');e.code=code;return e;}
 function create(adapter,notify=()=>{}){
- let revision,loaded=false,tail=Promise.resolve(),pending=0,conflict=false,error=false,lastSaved=null,stopped=false,generation=0,savedGeneration=0;
+ let revision,loaded=false,tail=Promise.resolve(),pending=0,conflict=false,error=false,lastSaved=null,stopped=false,generation=0,savedGeneration=0,issued=0,failedThrough=0;
  const status=()=>({pending,conflict,error,lastSaved,dirty:generation!==savedGeneration});const emit=()=>notify(status());
- function queue(action){pending++;emit();const task=tail.then(async()=>{if(!loaded||stopped)throw fault('unavailable');if(conflict)throw fault('conflict');try{const r=await action(revision);revision=r.revision;error=false;lastSaved=new Date().toISOString();return r;}catch(e){error=true;if(e.code==='conflict')conflict=true;throw e;}});tail=task.catch(()=>{});return task.finally(()=>{pending--;emit();});}
+ function queue(action){const ticket=++issued;pending++;emit();const task=tail.then(async()=>{if(!loaded||stopped||ticket<=failedThrough)throw fault('unavailable');if(conflict)throw fault('conflict');try{const r=await action(revision);revision=r.revision;error=false;lastSaved=new Date().toISOString();return r;}catch(e){error=true;failedThrough=issued;if(e.code==='conflict')conflict=true;throw e;}});tail=task.catch(()=>{});return task.finally(()=>{pending--;emit();});}
  return Object.freeze({
   async load(){if(loaded||pending)throw fault('unavailable');const r=await adapter.read();revision=r.revision;loaded=true;return r.value;},
   markDirty(){generation++;emit();},
