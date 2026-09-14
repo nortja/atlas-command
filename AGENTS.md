@@ -41,6 +41,17 @@
   checklist with concrete launch or installation instructions.
 - If forced to stop early, save a progress checkpoint with exact next steps. Never
   describe unfinished work as complete.
+- Treat passing tests, a successful build, a finished screen, and small fixes as
+  internal checkpoints. Continue through the whole batch before handing it back.
+- Record useful but nonblocking feedback questions for the consolidated review;
+  make reasonable reversible choices and keep building in the meantime.
+- Casual check-ins such as "status", "how is it going", or screenshots steer the
+  ongoing session. Respond briefly, incorporate feedback, and resume the batch.
+  Do not pause or wrap up unless the owner explicitly asks to pause or the batch
+  is integrated and has passed the available checks.
+- Save reviewable commits and progress checkpoints during extended sessions. If
+  one task is blocked, continue independent agreed work and identify the specific
+  missing information or access needed for the blocked task.
 
 ## Source, generated output, and validation
 
