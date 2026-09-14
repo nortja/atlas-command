@@ -47,6 +47,7 @@ def main():
             saved=json.loads(state_path.read_text('utf-8'))['settings']['globeView']
             assert abs(saved['lat']-34.25)<.001 and abs(saved['lon']+118.45)<.001 and abs(saved['zoom']-1.73)<.001
             assert saved['selectedId']==selected_id
+            assert saved['spin'] is False
             deadline=time.monotonic()+3
             while time.monotonic()<deadline and runtime_session.exists():time.sleep(.05)
             assert not runtime_session.exists(),'Clean shutdown left a stale runtime-session file.'
@@ -57,6 +58,7 @@ def main():
             restored=page.evaluate("({lat:AtlasTest.globe.lat,lon:AtlasTest.globe.lon,zoom:AtlasTest.globe.zoom,selected:AtlasTest.globe.selected})")
             assert abs(restored['lat']-34.25)<.02 and abs(restored['lon']+118.45)<.02 and abs(restored['zoom']-1.73)<.02,restored
             assert restored['selected']==selected_id
+            assert page.evaluate('AtlasTest.globe.spin') is False
             print('PASS: Small red shutdown control freezes the map, saves Atlas cleanly and releases the native host.',flush=True)
             print('PASS: A normal restart restores the saved globe position, zoom and selected site.',flush=True)
             host.stop();context.close();browser.close();browser=None
