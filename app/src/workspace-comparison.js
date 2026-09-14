@@ -5,9 +5,10 @@ function compare(current,saved){try{
  if(!I.assess(current).usable||!I.assess(saved).usable)throw Error();let nodes=0;
  function canonical(v,depth=0){if(++nodes>500000||depth>64)throw Error();if(v===null||typeof v!=='object')return JSON.stringify(v);if(Array.isArray(v))return '['+v.map(x=>canonical(x,depth+1)).join(',')+']';return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical(v[k],depth+1)).join(',')+'}';}
  const equal=(a,b)=>canonical(a)===canonical(b),a=new Map(current.sites.map(s=>[s.id,s])),b=new Map(saved.sites.map(s=>[s.id,s])),rows=[];
+ const label=site=>String(site.name).trim().slice(0,240);
  const known=new Set(['id','createdAt','updatedAt',...Object.values(GROUPS).flat()]);
- for(const site of saved.sites){const old=a.get(site.id);if(!old){rows.push({name:site.name,change:'added',fields:[]});continue;}const fields=Object.entries(GROUPS).filter(([,keys])=>keys.some(k=>!equal(old[k],site[k]))).map(([name])=>name);const extra=x=>Object.fromEntries(Object.entries(x).filter(([k])=>!known.has(k)));if(!equal(extra(old),extra(site)))fields.push('Other metadata');if(fields.length)rows.push({name:old.name,change:'changed',fields});}
- for(const site of current.sites)if(!b.has(site.id))rows.push({name:site.name,change:'removed',fields:[]});
+ for(const site of saved.sites){const old=a.get(site.id);if(!old){rows.push({name:label(site),change:'added',fields:[]});continue;}const fields=Object.entries(GROUPS).filter(([,keys])=>keys.some(k=>!equal(old[k],site[k]))).map(([name])=>name);const extra=x=>Object.fromEntries(Object.entries(x).filter(([k])=>!known.has(k)));if(!equal(extra(old),extra(site)))fields.push('Other metadata');if(fields.length)rows.push({name:label(old),change:'changed',fields});}
+ for(const site of current.sites)if(!b.has(site.id))rows.push({name:label(site),change:'removed',fields:[]});
  const settings=x=>Object.fromEntries(Object.entries(x.settings||{}).filter(([k])=>k!=='fieldCameras'));
  const sections=[['Queue',current.queue||[],saved.queue||[]],['Plans',current.plan||{},saved.plan||{}],['Layout',current.layout||{},saved.layout||{}],['Settings',settings(current),settings(saved)],['Private camera settings',current.settings?.fieldCameras||null,saved.settings?.fieldCameras||null]].map(([name,x,y])=>({name,changed:!equal(x,y)}));
  return {currentCount:a.size,savedCount:b.size,added:rows.filter(r=>r.change==='added').length,removed:rows.filter(r=>r.change==='removed').length,changed:rows.filter(r=>r.change==='changed').length,rows,sections};
