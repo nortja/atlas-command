@@ -57,5 +57,5 @@ test('encrypted team assets and native route are explicitly integrated without C
   const source=fs.readFileSync(path.join(__dirname,'..',name),'utf8');for(const asset of ['team-crypto.js','team-model.js','team-vault.js','team-shell.js','team-shell.css'])assert(source.includes('src/'+asset),name+': '+asset);
  }
  const recipe=fs.readFileSync(path.join(__dirname,'../build/integrate_team_vault.py'),'utf8');assert.doesNotMatch(recipe,/connect-src|unsafe-eval|unsafe-inline/);
- const workflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/owner-preview.yml'),'utf8');assert(workflow.includes('python tests/team_vault_native.py'));
+ const workflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/owner-preview.yml'),'utf8');assert(workflow.includes('python tests/team_vault_native.py'));for(const trigger of ["'app/src/team-*'","'tests/team*'","'build/team-vault-host.cs.txt'"])assert(workflow.includes(trigger));
 });
