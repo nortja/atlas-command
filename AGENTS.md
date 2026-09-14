@@ -10,6 +10,10 @@
 - Do not add production relay networking or invitations without an agreed,
   reviewed identity/key-management/sync design. Do not invent cryptography.
 - Telemetry/data collection remain opt-in and OFF by default.
+- Released versions should update automatically through a trusted distribution
+  channel. The current unsigned owner-preview ZIP is manual delivery, not an
+  updater. Preserve the Store publication hold; confirm the distribution channel
+  before provisioning private signing/hosting. See `docs/app-update-delivery.md`.
 - Never modify or push `main`, publish to the Microsoft Store, bypass endpoint
   security, or run disposable-runner native tests against the owner's profile.
 - Read the applicable security design in `docs/collaboration-phase-3-security.md`.
