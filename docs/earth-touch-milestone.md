@@ -67,3 +67,9 @@ never parsed or logged and the scratch buffer is cleared. Authentication, origin
 path, method and data limits remain unchanged. Four native delayed-body requests
 must receive the exact 403 without retries and preserve the saved workspace.
 Static serving also explicitly recognizes the allowlisted local PNG's MIME type.
+
+The native test harness also replaces sequential recursive taskkill calls with
+snapshot-based identification of the exact disposable Edge profile and its Edge
+descendants, direct Stop-Process calls, and a bounded exit check. It never targets
+all Edge processes by name. This affects runner cleanup only, not app lifecycle
+behavior or endpoint policy; all existing shutdown/reopen assertions remain.

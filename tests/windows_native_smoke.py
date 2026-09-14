@@ -50,9 +50,20 @@ class NativeSmoke:
         quoted = str(profile).replace("'", "''")
         self.powershell(
             "$needle = '--user-data-dir=\"" + quoted + "\"'; "
-            "Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | "
-            "Where-Object { $_.CommandLine -and $_.CommandLine.Contains($needle) } | "
-            "ForEach-Object { & \"$env:SystemRoot\\System32\\taskkill.exe\" /PID $_.ProcessId /T /F | Out-Null }")
+            "$rows = @(Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\"); "
+            "$ownedIds = [System.Collections.Generic.HashSet[int]]::new(); "
+            "$rows | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($needle) } | "
+            "ForEach-Object { [void]$ownedIds.Add([int]$_.ProcessId) }; "
+            "do { $added = $false; foreach ($row in $rows) { "
+            "if ($ownedIds.Contains([int]$row.ParentProcessId) -and $ownedIds.Add([int]$row.ProcessId)) { $added = $true } "
+            "} } while ($added); "
+            "foreach ($ownedId in $ownedIds) { Stop-Process -Id $ownedId -Force -ErrorAction SilentlyContinue }; "
+            "$deadline = [DateTime]::UtcNow.AddSeconds(8); "
+            "do { $remaining = @($ownedIds | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue } | "
+            "Where-Object { $_.ProcessName -eq 'msedge' }); "
+            "if ($remaining.Count -eq 0) { return }; Start-Sleep -Milliseconds 100 "
+            "} while ([DateTime]::UtcNow -lt $deadline); "
+            "throw 'The isolated Edge profile did not stop within the cleanup deadline.'")
 
     def start(self) -> None:
         self.process = subprocess.Popen([str(self.exe)], cwd=self.exe.parent)
