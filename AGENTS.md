@@ -58,6 +58,8 @@
   final checkpoint, while continuing the authorized batch without routine pauses.
 - Continue substantial integrated batches after progress questions; answer the
   question briefly and keep implementing until the batch is verified for review.
+- Carry a milestone through source integration, regression checks and native
+  validation before the consolidated handoff; record nonblocking feedback for then.
 
 ## Source, generated output, and validation
 
