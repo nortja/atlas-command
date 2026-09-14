@@ -134,7 +134,7 @@ class NativeSmoke:
                 # Startup schedules an asynchronous save. Check the persisted state,
                 # not the transient SAVING/UNSAVED badge between paint and completion.
                 page.evaluate('AtlasTest.flush()')
-                page.get_by_text('SAVED ON THIS PC', exact=True).wait_for()
+                page.get_by_text('SAVED ON THIS PC', exact=True).wait_for(state='attached')
                 document = page.content()
                 if 'id="boot"' in document:
                     raise AssertionError('The native-served renderer did not clear its startup screen.')

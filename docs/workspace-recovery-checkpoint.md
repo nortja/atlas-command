@@ -88,6 +88,6 @@ blocked on trusted distribution/signing prerequisites and the publication hold.
 - Legacy local API writers remain compatible but unguarded. Their writes invalidate
   the new client's revision. They must be retired before production synchronization.
 
-- The current recovery desk requires a readable workspace at startup. A completely
-  corrupt main workspace still needs the existing manual recovery procedure; a
-  dedicated startup recovery screen is a next-milestone candidate.
+- Follow-up: the startup recovery milestone in `startup-recovery-checkpoint.md`
+  supersedes the readable-workspace limitation above. It adds original preservation,
+  damaged-workspace recovery and media availability inspection.
