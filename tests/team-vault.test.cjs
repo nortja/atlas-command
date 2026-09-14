@@ -44,6 +44,14 @@ test('private modules avoid catalog exports, telemetry, logging and unsafe HTML'
  }
  const host=fs.readFileSync(path.join(__dirname,'../build/team-vault-host.cs.txt'),'utf8');assert.doesNotMatch(host,/Log\(|ex\.Message|SendFile\(/);assert.match(host,/File\.Replace/);assert.match(host,/Private storage conflict/);
 });
+test('authenticated but malformed backup and substituted files preserve the current vault',async()=>{
+ const s=store(),v=V.create(s);await v.create(PASS,'Research');await v.file({id:'file',body:'evidence'},new Uint8Array([7]));
+ const before=await s.read(),ctx=await C.context(PASS,before.salt),d=C.decode(await C.open(ctx,before,before.id,'workspace'));
+ for(const corrupt of [{...d,schema:999},{...d,records:[{...d.records[0],versions:[{...d.records[0].versions[0],number:99}]}]}]){
+  const e=await C.seal(ctx,before.id,1,'workspace',C.encode(corrupt));await assert.rejects(()=>v.restore(JSON.stringify(e),PASS,true));assert.deepEqual(await s.read(),before);
+ }
+ const swapped=clone(d);swapped.records[0].versions[0].envelope.id=d.id+':other';const e=await C.seal(ctx,before.id,1,'workspace',C.encode(swapped));await assert.rejects(()=>v.restore(JSON.stringify(e),PASS,true));assert.deepEqual(await s.read(),before);
+});
 test('encrypted team assets and native route are explicitly integrated without CSP expansion',()=>{
  for(const name of ['app/index.html','app/workspace-preview.html','native/AtlasHost.cs','build/Build-OwnerPreview.ps1','build/Build-Store.ps1']){
   const source=fs.readFileSync(path.join(__dirname,'..',name),'utf8');for(const asset of ['team-crypto.js','team-model.js','team-vault.js','team-shell.js','team-shell.css'])assert(source.includes('src/'+asset),name+': '+asset);

@@ -67,6 +67,8 @@ def main():
             response = host.expect('POST', 'api/team-vault', 400, body=invalid, headers=headers)
             assert SECRET.encode() not in response[2]
         assert json.loads(vault.read_text('utf-8')) == saved
+        for file in appdata.rglob('*.log'):
+            assert SECRET.encode() not in file.read_bytes()
         host.expect('GET', 'TeamWorkspace/vault.json', 404)
         host.stop()
         host.start()

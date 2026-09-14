@@ -57,7 +57,7 @@ function render(){
 function backupImport(parent){const f=form(parent,'Restore encrypted backup',async v=>{const file=v.get('backup');if(file.size>C.MAX)throw new Error('Backup limit');await vault.restore(await file.text(),v.get('backupPass'),v.get('replace')==='on');exists=true;render();});field(f,'Encrypted backup file','backup','file');const p=field(f,'Backup passphrase','backupPass','password');p.minLength=16;field(f,'Replace the local team workspace; use the backup passphrase afterward','replace','checkbox');}
 function download(blob,name){const url=URL.createObjectURL(blob),a=el('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 window.addEventListener('pagehide',lock);window.addEventListener('beforeunload',lock);
-document.addEventListener('click',e=>{if(e.target.closest?.('#shutdownBtn'))lock();},{capture:true});
+document.addEventListener('click',e=>{if(e.target.closest?.('#shutdownBtn,#stopLocal'))lock();},{capture:true});
 function mount(){const b=document.getElementById('collaborationBtn');if(b)b.onclick=()=>run(open);}
 window.AtlasTeams=Object.freeze({open,lock});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
