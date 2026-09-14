@@ -16,7 +16,7 @@ function create(adapter,notify=()=>{}){
  });
 }
 function browser(storage,locks){const key='atlas-command-state';
- const read=()=>{const raw=storage.getItem(key);return {revision:raw,value:raw===null?null:JSON.parse(raw)};};
+ const read=()=>{const raw=storage.getItem(key),value=raw===null?null:JSON.parse(raw);if(raw!==null&&value===null)throw fault('unavailable');return {revision:raw,value};};
  return {read:async()=>read(),write:async(snapshot,expected)=>{
   if(!locks?.request)throw fault('unavailable');
   return locks.request('atlas-command-workspace-write',{mode:'exclusive'},()=>{try{if(storage.getItem(key)!==expected)throw fault('conflict');storage.setItem(key,snapshot);return {revision:snapshot};}catch(e){throw e.code==='conflict'?e:fault('unavailable');}});
@@ -26,6 +26,7 @@ function native(fetcher,beacon){
  async function request(path,body){let r;try{r=await fetcher('api/'+path,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Request':'local'},body:JSON.stringify(body)});}catch{throw fault('unavailable');}if(!r.ok)throw fault(r.status===409?'conflict':'unavailable');return r.json();}
  return {read:()=>request('state-v2'),write:(snapshot,revision)=>request('state-v2',{revision,value:JSON.parse(snapshot)}),
   backups:()=>request('state-backups'),inspect:id=>request('state-backups?review='+encodeURIComponent(id)),
+  health:()=>request('state-health'),
   restore:(review,revision)=>request('state-backups',{revision,id:review.id,backupRevision:review.revision}),
   closing:(snapshot,revision)=>beacon('api/state-v2',new Blob([JSON.stringify({revision,value:JSON.parse(snapshot)})],{type:'application/json'}))};
 }

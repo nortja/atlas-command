@@ -60,6 +60,44 @@ def main():
                 assert media_fixture.read_bytes()==b'opaque-media-preservation-fixture'
                 assert vault_fixture.read_bytes()==b'opaque-vault-preservation-fixture'
                 host.passed('Native recovery UI restores reviewed records without close-beacon overwrite')
+                # Recover from real startup failures without seeding over the original.
+                valid_key='12345678-1234-1234-1234-123456789012.jpg'
+                (appdata/'Data'/'media'/valid_key).write_bytes(b'local media availability fixture')
+                historical['sites'][0]['media']=[{'key':valid_key},{'key':'12345678-1234-1234-1234-123456789013.pdf'},{'key':'not-a-native-media-key'}]
+                (appdata/'Data'/'backup-2001-01-01.json').write_text(json.dumps(historical),encoding='utf-8')
+                originals=[b'{"private-startup-marker":broken}',json.dumps({'schemaVersion':99,'sites':[]}).encode(),b'\xffprivate-startup-marker\x80']
+                for original in originals:
+                    page.evaluate('AtlasTest.flush()')
+                    current_path=appdata/'Data'/'workspace.json';current_path.write_bytes(original)
+                    before=set((appdata/'Data').glob('recovery-original-*.json'))
+                    page.reload();page.locator('#startupStatus').wait_for()
+                    page.locator('[data-backup-search]').fill('2001-01-01')
+                    assert current_path.read_bytes()==original
+                    assert page.evaluate('!!window.AtlasWorkspace') is False
+                    page.locator('[data-inspect="backup-2001-01-01.json"]').click()
+                    page.locator('#restoreStartup').wait_for()
+                    assert '1 missing' in page.locator('#startupReview').inner_text()
+                    page.locator('#cancelStartupRestore').click();assert current_path.read_bytes()==original
+                    page.locator('[data-inspect="backup-2001-01-01.json"]').click();page.locator('#restoreStartup').click()
+                    page.locator('#overviewBtn').wait_for()
+                    assert page.evaluate('AtlasWorkspace.sites.list()[0].notes')=='restored-through-ui'
+                    added=set((appdata/'Data').glob('recovery-original-*.json'))-before
+                    assert len(added)==1 and next(iter(added)).read_bytes()==original
+                    assert vault_fixture.read_bytes()==b'opaque-vault-preservation-fixture'
+                    assert media_fixture.read_bytes()==b'opaque-media-preservation-fixture'
+                assert 'private-startup-marker' not in (appdata/'host.log').read_text('utf-8')
+                host.passed('Malformed JSON, unsupported schema and invalid UTF-8 recover with exact original bytes preserved and no private log leakage')
+                # If original preservation is unavailable, restoration must not proceed.
+                page.evaluate('AtlasTest.flush()')
+                import uuid
+                existing=len(list((appdata/'Data').glob('recovery-original-*.json')))
+                for _ in range(50-existing):
+                    (appdata/'Data'/('recovery-original-20010101000000-'+uuid.uuid4().hex+'.json')).write_bytes(b'fixture')
+                current=get('api/state-v2');reviewed=get('api/state-backups?review=backup-2001-01-01.json')
+                before_bytes=(appdata/'Data'/'workspace.json').read_bytes()
+                post('api/state-backups',{'revision':current['revision'],'id':reviewed['id'],'backupRevision':reviewed['revision']},400)
+                assert (appdata/'Data'/'workspace.json').read_bytes()==before_bytes
+                host.passed('Original-preservation limit refuses restoration without pruning copies or changing current data')
             finally:browser.close()
         host.stop()
     finally:host.cleanup()
