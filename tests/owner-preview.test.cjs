@@ -4,6 +4,20 @@ const build=fs.readFileSync('build/Build-OwnerPreview.ps1','utf8');
 const install=fs.readFileSync('packaging/owner-preview/Install-AtlasCommand.ps1','utf8');
 const uninstall=fs.readFileSync('packaging/owner-preview/Uninstall-AtlasCommand.ps1','utf8');
 
+test('owner installer copies nested files and literal bracketed names on Windows',{skip:process.platform!=='win32'},()=>{
+  const path=require('node:path'),os=require('node:os'),{execFileSync}=require('node:child_process');
+  const fixture=fs.mkdtempSync(path.join(os.tmpdir(),'atlas-installer-copy-'));
+  try{
+    const source=path.join(fixture,'source [preview]'),target=path.join(fixture,'target');fs.mkdirSync(path.join(source,'app','src'),{recursive:true});fs.mkdirSync(target);
+    fs.writeFileSync(path.join(source,'AtlasCommand.exe'),'copy fixture, not an executable');fs.writeFileSync(path.join(source,'app','src','literal [asset].js'),'fixture payload');
+    // Exercise the shipped copy operation, without installation, deletion, COM or launch.
+    const operation=install.split(/\r?\n/).find(line=>line.includes('Copy-Item'));
+    assert(operation);const script=path.join(fixture,'copy.ps1');fs.writeFileSync(script,'$ErrorActionPreference="Stop"\n$Source=$env:ATLAS_COPY_SOURCE\n$Target=$env:ATLAS_COPY_TARGET\n'+operation);
+    execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-File',script],{env:{...process.env,ATLAS_COPY_SOURCE:source,ATLAS_COPY_TARGET:target},timeout:20000});
+    assert.equal(fs.readFileSync(path.join(target,'AtlasCommand.exe'),'utf8'),'copy fixture, not an executable');assert.equal(fs.readFileSync(path.join(target,'app','src','literal [asset].js'),'utf8'),'fixture payload');
+  }finally{fs.rmSync(fixture,{recursive:true,force:true});}
+});
+
 test('owner preview remains private unsigned development output',()=>{
   assert.match(build,/PRIVATE_OWNER_DEVELOPMENT/);
   assert.match(build,/signed=\$false/);

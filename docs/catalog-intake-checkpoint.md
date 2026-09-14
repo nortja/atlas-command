@@ -30,10 +30,13 @@ checks cover pagination, selection, escaped input, all supported formats, save
 failure/retry, undo, reload persistence, evidence navigation and phone-width layout.
 Owner-preview compilation passed locally without installation or launch.
 
-Next checkpoint: finish the final six browser regression suites, commit/push the
-integrated milestone on develop/ui-directions, then verify the hosted Windows
-native workflow (including the new real-storage import/undo test). Native execution
-is deliberately restricted to the disposable hosted runner, not the owner's PC.
+All six final browser regression suites passed, and the integrated milestone was
+pushed as 9f3f39e on develop/ui-directions. Hosted native validation is in progress.
+A delivery check also found the optional installer used Copy-Item -LiteralPath
+with a wildcard. It now enumerates source items and copies each literal path.
+Its new real-filesystem copy regression was blocked locally by Windows script
+execution policy; no policy was changed. The hosted Windows suite must pass it
+before delivery. Native execution remains restricted to the disposable runner.
 
 ## Storage and privacy limits
 

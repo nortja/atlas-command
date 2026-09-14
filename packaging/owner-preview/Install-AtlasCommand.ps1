@@ -13,7 +13,7 @@ $DesktopLink=Join-Path ([Environment]::GetFolderPath('Desktop')) 'Atlas Command.
 $null=New-Item -ItemType Directory -Force -Path $Target,$StartMenu
 # Program files are replaceable; user data and protected camera credentials live elsewhere under LocalAppData\AtlasCommand.
 Get-ChildItem -LiteralPath $Target -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $Source '*') -Destination $Target -Recurse -Force
+Get-ChildItem -LiteralPath $Source -Force | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $Target -Recurse -Force }
 $InstalledExe=Join-Path $Target 'AtlasCommand.exe'
 if (-not (Test-Path -LiteralPath $InstalledExe)) { throw 'Installation copy did not produce AtlasCommand.exe.' }
 $Shell=New-Object -ComObject WScript.Shell
