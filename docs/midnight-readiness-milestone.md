@@ -80,5 +80,34 @@ the test verifies every other stored field and private storage remain unchanged.
 Local native compilation passed without installation or launching on owner data.
 All nine browser regression suites passed, preserving Earth/touch, catalog import,
 startup/record recovery and encrypted collaboration. The final close-button touch
-target was rechecked with the Midnight browser suite. Hosted Windows native validation
-must finish before delivery.
+target was rechecked with the Midnight browser suite.
+
+Completed on develop/ui-directions. Executable source:
+86acea9a6f6044679ec46d207a8a42ce15b63a44. Hosted Windows run 34904302531 passed
+all 454 logic tests, packaging and all 13 native runtime scripts. The new real-host
+check verifies a usable single-use rehearsal, no external requests and unchanged
+workspace bytes. Existing recovery, encrypted Teams, DPAPI, authenticated roles,
+catalog, cameras, layouts and secure restart/shutdown checks passed.
+
+- Run: https://github.com/nortja/atlas-command/actions/runs/34904302531
+- Download: https://github.com/nortja/atlas-command/actions/runs/34904302531/artifacts/10372725200
+- Artifact expires September 17, 2026 at 22:34 UTC.
+
+Changed files: `app/src/midnight-readiness.js`, `midnight-desk.js`, `midnight-desk.css`,
+`privacy-center.js`; integration recipe `build/integrate_midnight_readiness.py`;
+three `tests/midnight*` files; owner-preview workflow; AGENTS.md and architecture,
+checkpoint and download documentation. No native route or key-management change.
+
+## Device review checklist
+
+After downloading a green owner preview, extract the artifact and its enclosed ZIP,
+close the older Atlas, and run AtlasCommand.exe. Open Privacy Center with the shield,
+then Explore Midnight readiness. Review one example and rehearse the paused outcome;
+switch sponsorship to Available for rehearsal, review again, and try the policy check.
+Confirm the screen says nothing was sent. Close and reopen: policy and review reset.
+Check touch scrolling, the close button and text size on the real display.
+
+This is not a request to connect a wallet, buy NIGHT, send funds, install an extension
+or enter a recovery phrase. None is required to use the offline desk or ordinary Atlas.
+Physical touch/DPI feel, signed upgrades and installation on the owner's Windows
+device are not established by headless browser or hosted Windows runtime checks.

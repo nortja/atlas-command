@@ -5,18 +5,20 @@ automatically. This is a requirement, not a claim that auto-update is enabled.
 
 ## Current preview
 
-The latest tested startup-recovery milestone is commit
-`f3a159203876746e2e23fa36110faedb6d121325` on `develop/ui-directions`.
-Owner-preview run **34895811375** completed successfully: 442 source/logic tests,
+The latest tested offline Midnight-readiness milestone is commit
+`86acea9a6f6044679ec46d207a8a42ce15b63a44` on `develop/ui-directions`.
+Owner-preview run **34904302531** completed successfully: 454 source/logic tests,
 Windows packaging, native catalog import/undo, guarded saves, reviewed record-backup
 restoration, damaged-workspace recovery with exact original preservation,
-storage/restart, camera, UI, privacy and encrypted-team tests passed.
-Eight browser regression suites also passed
+storage/restart, camera, UI, privacy and encrypted-team tests passed. The new offline
+Midnight rehearsal passed real-host checks without external requests or workspace
+changes. Wallets, proofs and live DUST sponsorship remain unconnected.
+Nine browser regression suites also passed
 locally. The optional installer copy regression passed on the hosted runner.
 
-- Run: https://github.com/nortja/atlas-command/actions/runs/34895811375
-- Download: https://github.com/nortja/atlas-command/actions/runs/34895811375/artifacts/10369157155
-- Artifact: `atlas-owner-preview-windows-x64`, expires September 17, 2026 at 21:02 UTC.
+- Run: https://github.com/nortja/atlas-command/actions/runs/34904302531
+- Download: https://github.com/nortja/atlas-command/actions/runs/34904302531/artifacts/10372725200
+- Artifact: `atlas-owner-preview-windows-x64`, expires September 17, 2026 at 22:34 UTC.
 
 Sign in with repository access, download the artifact, extract it and the enclosed
 preview ZIP into a fresh folder, close the older Atlas instance, then run
@@ -28,9 +30,9 @@ test delivery, not a durable automatic update feed.
 
 Earlier failure emails are historical. The rejected-request connection-reset
 handling and isolated Edge cleanup were fixed in the prior Earth milestone.
-The preceding milestone fixed native test polling without weakening CSP. This
-milestone fixed a storage-badge test race and a collapsed-panel visibility assumption.
-The final run above is green; see `startup-recovery-checkpoint.md` for exact scope.
+Earlier recovery work fixed native test polling, a storage-badge race and a
+collapsed-panel visibility assumption without weakening CSP. The current Midnight
+readiness run is green; see `midnight-readiness-milestone.md` for exact scope.
 
 ## Delivery decision and next steps
 
