@@ -139,18 +139,18 @@ class NativeSmoke:
                     raise AssertionError('The native-served renderer did not display every bundled catalog record.')
                 if 'SAVED ON THIS PC' not in document:
                     raise AssertionError('Renderer did not select native storage mode.')
-                page.wait_for_function('!!window.AtlasCatalogIntakeUI')
+                page.locator('#catalogReviewBtn').wait_for(state='attached')
                 page.evaluate('AtlasTest.flush()')
                 page.locator('#fileImport').set_input_files({
                     'name': 'native-intake.json', 'mimeType': 'application/json',
                     'buffer': json.dumps([{'name': 'Native intake fixture', 'lat': 12.345, 'lon': 23.456}]).encode()})
                 page.locator('#confirmImport').click()
-                page.wait_for_function('!document.getElementById("dialog").open')
+                page.locator('#dialog').wait_for(state='hidden')
                 assert len(self.read_state()['sites']) == expected + 1
                 page.locator('#overviewBtn').click()
                 page.locator('#catalogReviewBtn').click()
                 page.locator('#intakeUndo').click()
-                page.wait_for_function('(n)=>AtlasWorkspace.sites.list().length===n', arg=expected)
+                page.get_by_text('Removed 1 records from the last import.', exact=True).wait_for()
                 assert len(self.read_state()['sites']) == expected
                 page.locator('#closeDialog').click()
                 self.passed('Catalog review and undo persist through the real native storage boundary')
