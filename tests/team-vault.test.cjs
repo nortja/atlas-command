@@ -45,7 +45,7 @@ test('private modules avoid catalog exports, telemetry, logging and unsafe HTML'
  const host=fs.readFileSync(path.join(__dirname,'../build/team-vault-host.cs.txt'),'utf8');assert.doesNotMatch(host,/Log\(|ex\.Message|SendFile\(/);assert.match(host,/File\.Replace/);assert.match(host,/Private storage conflict/);
 });
 test('authenticated but malformed backup and substituted files preserve the current vault',async()=>{
- const s=store(),v=V.create(s);await v.create(PASS,'Research');await v.file({id:'file',body:'evidence'},new Uint8Array([7]));
+ const s=store(),v=V.create(s);await v.create(PASS,'Research');await v.file({id:'file',body:'evidence',visibility:'team'},new Uint8Array([7]));
  const before=await s.read(),ctx=await C.context(PASS,before.salt),d=C.decode(await C.open(ctx,before,before.id,'workspace'));
  for(const corrupt of [{...d,schema:999},{...d,records:[{...d.records[0],versions:[{...d.records[0].versions[0],number:99}]}]}]){
   const e=await C.seal(ctx,before.id,1,'workspace',C.encode(corrupt));await assert.rejects(()=>v.restore(JSON.stringify(e),PASS,true));assert.deepEqual(await s.read(),before);

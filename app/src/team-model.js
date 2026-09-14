@@ -34,7 +34,9 @@ function apply(document,actor,op){
     d.records.push(r);
   }else{
     const r=d.records.find(r=>r.id===op.id);if(!r||!readable(r,actor)||op.expectedVersion!==r.versions.length)deny();
-    if(op.type==='revise'){
+    if(op.type==='visibility'){
+      if(r.authorId!==actor||!visibility.includes(op.visibility)||(r.kind==='proposal'&&r.status!=='pending'))deny();r.visibility=op.visibility;
+    }else if(op.type==='revise'){
       if(r.kind==='proposal'||(!manage&&r.authorId!==actor))deny();r.versions.push({number:r.versions.length+1,body:text(op.body),...(r.kind==='file'?{envelope:copy(op.envelope)}:{})});
     }else if(op.type==='decide'){
       if(!manage||r.kind!=='proposal'||r.status!=='pending'||!['approved','rejected'].includes(op.decision))deny();

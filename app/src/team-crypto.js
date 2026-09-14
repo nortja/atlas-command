@@ -10,7 +10,7 @@ function b64(a){let s='';for(let i=0;i<a.length;i+=8192)s+=String.fromCharCode(.
 function un64(s,n){if(typeof s!=='string'||s.length>MAX||!s.length||s.length%4||!/^[A-Za-z0-9+/]*={0,2}$/.test(s))fail();const a=Uint8Array.from(atob(s),c=>c.charCodeAt(0));if(b64(a)!==s||(n!==undefined&&a.length!==n))fail();return a;}
 function validate(e){
   if(!e||Object.getPrototypeOf(e)!==Object.prototype||Object.keys(e).sort().join(',')!=='ciphertext,id,iterations,iv,purpose,revision,salt,version')fail();
-  if(e.version!==1||e.iterations!==ITERATIONS||typeof e.id!=='string'||!/^[-a-zA-Z0-9:]{1,160}$/.test(e.id)||!['workspace','file'].includes(e.purpose)||!Number.isSafeInteger(e.revision)||e.revision<1)fail();
+  if(e.version!==1||e.iterations!==ITERATIONS||typeof e.id!=='string'||!/^[-a-zA-Z0-9:]{1,160}$/.test(e.id)||!['workspace','file','credential','private'].includes(e.purpose)||!Number.isSafeInteger(e.revision)||e.revision<1)fail();
   un64(e.salt,16);un64(e.iv,12);if(un64(e.ciphertext).length<16)fail();return e;
 }
 function aad(e){return enc.encode(JSON.stringify(['AtlasTeam',e.version,e.id,e.revision,e.purpose,e.iterations,e.salt]));}
