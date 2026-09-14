@@ -66,6 +66,8 @@ jobs:
       - name: Test actual startup, native-rendered page, saves, attachments and restart
         shell: pwsh
         run: |
+          python -m pip install --disable-pip-version-check --no-cache-dir playwright==1.57.0
+          if ($LASTEXITCODE -ne 0) { throw 'Test driver setup failed.' }
           python tests/windows_native_smoke.py
           if ($LASTEXITCODE -ne 0) { throw 'Windows native smoke test failed. Review the step log and summary.' }
       - name: Remove temporary executable and test payload

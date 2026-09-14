@@ -1,6 +1,6 @@
 """Exercise the real, unmodified native host on a disposable GitHub Windows runner.
 
-Uses only Python's standard library and the runner's existing Edge installation.
+Uses Playwright with the runner's existing Edge installation.
 No certificates, elevation, endpoint exclusions, external test data, or fixtures in
 user folders are installed. This is NOT a Windows 10/11 installation acceptance test.
 """
@@ -108,29 +108,30 @@ class NativeSmoke:
         return json.loads(self.expect('GET', 'api/state', 200)[2])
 
     def render(self) -> None:
-        profile = self.temp / ('atlas-edge-test-' + uuid.uuid4().hex)
-        self.profiles.append(profile)
-        args = [self.edge, '--headless', '--disable-gpu', '--no-first-run',
-                '--no-default-browser-check', '--disable-background-networking',
-                '--disable-component-update', '--dump-dom', '--timeout=10000',
-                '--virtual-time-budget=2500', '--user-data-dir=' + str(profile), self.url]
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        try:
-            stdout, _ = proc.communicate(timeout=45)
-            if proc.returncode != 0:
-                raise RuntimeError('Edge headless rendering returned an error.')
-            document = stdout.decode('utf-8', errors='replace')
-            if 'id="boot"' in document:
-                raise AssertionError('The native-served renderer did not clear its startup screen.')
-            if document.count('class="site-item ') != 40:
-                raise AssertionError('The native-served renderer did not display its 40 bundled catalog records.')
-            if 'SAVED ON THIS PC' not in document:
-                raise AssertionError('Renderer did not select native storage mode.')
-        finally:
-            if proc.poll() is None:
-                subprocess.run([str(Path(os.environ['SystemRoot']) / 'System32' / 'taskkill.exe'),
-                                '/PID', str(proc.pid), '/T', '/F'], capture_output=True, timeout=15)
-                proc.communicate(timeout=10)
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(executable_path=self.edge, headless=True)
+            try:
+                context = browser.new_context()
+                page = context.new_page()
+                errors = []
+                page.on('pageerror', lambda error: errors.append(type(error).__name__))
+                # The pre-existing photographic basemap is unrelated to host readiness.
+                page.route('https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png', lambda route: route.abort())
+                page.goto(self.url, wait_until='domcontentloaded', timeout=30000)
+                page.wait_for_function("!!window.AtlasTest && !document.getElementById('boot')", timeout=30000)
+                document = page.content()
+                if 'id="boot"' in document:
+                    raise AssertionError('The native-served renderer did not clear its startup screen.')
+                expected = page.evaluate("new Set([...(window.ATLAS_SEED||[]),...(window.ATLAS_SITE_EXPANSION||[]),...(window.ATLAS_SITE_EXPANSION_R5||[]),...(window.ATLAS_SITE_EXPANSION_R6||[]),...(window.ATLAS_SITE_EXPANSION_R7||[]),...(window.ATLAS_SITE_EXPANSION_R8||[])].map(s=>s.id)).size")
+                if expected < 26 or page.locator('.site-item').count() != expected:
+                    raise AssertionError('The native-served renderer did not display every bundled catalog record.')
+                if 'SAVED ON THIS PC' not in document:
+                    raise AssertionError('Renderer did not select native storage mode.')
+                if errors:
+                    raise AssertionError('The native-served renderer raised an uncaught error.')
+            finally:
+                browser.close()
         time.sleep(0.7)
 
     def stop(self) -> None:
