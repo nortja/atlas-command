@@ -85,8 +85,8 @@ blocked on trusted distribution/signing prerequisites and the publication hold.
   can still lose unsaved edits; use explicit save/shutdown where available.
 - Native previous/daily snapshots are ordinary local JSON backups. Encrypted team
   backups, DPAPI secrets and media-inclusive recovery remain separate workflows.
-- Legacy local API writers remain compatible but unguarded. Their writes invalidate
-  the new client's revision. They must be retired before production synchronization.
+- Follow-up: `guarded-recovery-milestone.md` retires the legacy api/state endpoint
+  and corrects the same-context closing allowance to use revision-checked saves.
 
 - Follow-up: the startup recovery milestone in `startup-recovery-checkpoint.md`
   supersedes the readable-workspace limitation above. It adds original preservation,

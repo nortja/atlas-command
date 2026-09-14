@@ -39,11 +39,27 @@ close beacons now reach the guarded endpoint (the prior host allowance still nam
 the old endpoint). Stale revisions and unmarked cross-context writes remain refused.
 The renderer suppresses closing beacons after save failure until a successful retry.
 
-462 locally runnable logic tests passed; the installer fixture remains hosted-only
+463 locally runnable logic tests passed; the installer fixture remains hosted-only
 because local execution policy blocks its generated script. All nine browser suites
 passed; recovery was rechecked after the final closing safeguard. Local native
 compilation passed without installation or launch on owner data. Hosted native
-validation is next before delivery. The phone-width recovery screenshot was checked.
+validation is complete. The phone-width recovery screenshot was checked.
+
+Native CI caught an overbroad integration replacement that removed neighboring camera
+test routes. The recipe now ends at the exact legacy block, with source assertions
+that both route/ONVIF handlers survive. The corrected stage passed all local tests and
+compiled; final native verification passed. Comparison also normalizes
+legacy display names and clears previous errors on retry without mutating records.
+
+## Device review
+
+Extract both ZIPs from the green preview artifact into a fresh folder, close the old
+Atlas, then run AtlasCommand.exe. Open Overview → Recovery → Compare saved copy.
+An unchanged workspace should show no changes. Check the search/type controls and
+phone/touch readability; closing the comparison should leave everything unchanged.
+Optionally save a disposable note and verify normal shutdown/reopen. No need to
+manufacture a conflict or restore real research: those paths are automated tests.
+Physical touch feel and Windows 10/11 installation remain owner-device checks.
 
 ## Remaining scope
 
@@ -52,3 +68,21 @@ field values stay out of summaries. Old clients cannot use the retired endpoint.
 Open the newly packaged app rather than mixing an older renderer with this host.
 Media-inclusive archives and signed update delivery remain future milestones.
 This does not add networking, wallet access, or cryptographic authorization.
+
+## Verified delivery
+
+Executable source d9f3ef8b5551903bdbccac02cb995338a4f25b9d on develop/ui-directions.
+Run 34907814676 passed all 464 logic tests, packaging and all 13 native runtime
+scripts. Camera/ONVIF routes, metadata-only comparison, guarded closing writes,
+stale/cross-context refusal, corrupt-workspace preservation, encrypted Teams/DPAPI
+and Midnight rehearsal all passed. Earlier runs 34907358863 and 34907612287 used
+the overbroad integration range; the final run verifies its correction.
+
+- Run: https://github.com/nortja/atlas-command/actions/runs/34907814676
+- Download: https://github.com/nortja/atlas-command/actions/runs/34907814676/artifacts/10374015208
+- Artifact expires September 17, 2026 at 23:22 UTC.
+
+Changed source: workspace-comparison model/UI, workspace-recovery-ui and
+workspace-storage; integrate_guarded_recovery recipe; owner-preview workflow;
+comparison/close-save tests and native fixture migration; AGENTS and recovery docs.
+Generated app/native outputs stay in ignored staging. No main or Store changes.

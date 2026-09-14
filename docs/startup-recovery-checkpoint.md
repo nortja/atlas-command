@@ -86,7 +86,8 @@ they do not expose Windows backup files or reset browser storage automatically.
 
 Next substantial recovery milestone: a bounded, media-inclusive archive with a
 manifest, validated paths and quotas, read-only inspection, and transactional restore
-tests. Retire legacy unguarded local writers before any future network sync. Keep
+tests. The subsequent `guarded-recovery-milestone.md` retires legacy unguarded local
+writers and adds saved-copy comparison. Keep
 Teams cryptography and secret recovery on their existing separate documented path.
 
 ## Remaining limitations
